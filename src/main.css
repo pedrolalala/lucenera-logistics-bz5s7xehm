@@ -1,140 +1,163 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 0 0% 98%;
-    --foreground: 260 5% 21%;
-
-    --card: 0 0% 100%;
-    --card-foreground: 260 5% 21%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 260 5% 21%;
-
-    --primary: 260 5% 21%; /* Graphite #333136 */
+    /* Primary: Graphite #333136 */
+    --primary: 276 5% 20%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --background: 0 0% 98%;
+    --foreground: 276 5% 10%;
 
-    --muted: 210 40% 96.1%;
+    --card: 0 0% 100%;
+    --card-foreground: 276 5% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 276 5% 10%;
+
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 276 5% 20%;
+
+    --muted: 210 40% 96%;
     --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 276 5% 20%;
 
-    --destructive: 15 85% 55%; /* Terracotta */
+    /* Destructive: Terracotta #cc5500 */
+    --destructive: 15 100% 40%;
     --destructive-foreground: 0 0% 100%;
+
+    /* Success: Vibrant Green #10c98f */
+    --success: 161 85% 43%;
+    --success-foreground: 0 0% 100%;
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 260 5% 21%;
+    --ring: 276 5% 20%;
 
-    --radius: 0.375rem; /* 6px */
+    /* Fixed radius as per specs */
+    --radius: 0.375rem;
 
     --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 260 5% 21%;
-    --sidebar-primary: 260 5% 21%;
+    --sidebar-foreground: 276 5% 20%;
+    --sidebar-primary: 276 5% 20%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 40% 96.1%;
-    --sidebar-accent-foreground: 260 5% 21%;
+    --sidebar-accent: 210 40% 96%;
+    --sidebar-accent-foreground: 276 5% 20%;
     --sidebar-border: 214.3 31.8% 91.4%;
-    --sidebar-ring: 260 5% 21%;
+    --sidebar-ring: 276 5% 20%;
 
-    --chart-1: 260 5% 21%; /* Graphite */
-    --chart-2: 161 85% 42%; /* #10c98f Green */
-    --chart-3: 210 100% 60%; /* Soft Blue */
-    --chart-4: 43 100% 60%;
-    --chart-5: 15 85% 55%;
+    --chart-1: 276 5% 20%;
+    --chart-2: 161 85% 43%;
+    --chart-3: 199 89% 48%;
+    --chart-4: 15 100% 40%;
+    --chart-5: 42 100% 50%;
   }
 
   .dark {
-    --background: 260 5% 15%;
-    --foreground: 0 0% 98%;
-
-    --card: 260 5% 18%;
-    --card-foreground: 0 0% 98%;
-
-    --popover: 260 5% 18%;
-    --popover-foreground: 0 0% 98%;
-
     --primary: 0 0% 98%;
-    --primary-foreground: 260 5% 21%;
-
-    --secondary: 260 5% 25%;
+    --primary-foreground: 276 5% 20%;
+    --background: 276 5% 10%;
+    --foreground: 0 0% 98%;
+    --card: 276 5% 12%;
+    --card-foreground: 0 0% 98%;
+    --popover: 276 5% 12%;
+    --popover-foreground: 0 0% 98%;
+    --secondary: 276 5% 15%;
     --secondary-foreground: 0 0% 98%;
-
-    --muted: 260 5% 25%;
+    --muted: 276 5% 15%;
     --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 260 5% 25%;
+    --accent: 276 5% 15%;
     --accent-foreground: 0 0% 98%;
-
-    --destructive: 15 85% 55%;
-    --destructive-foreground: 0 0% 98%;
-
-    --border: 260 5% 25%;
-    --input: 260 5% 25%;
-    --ring: 260 5% 35%;
-
-    --sidebar-background: 260 5% 21%; /* Graphite Background */
+    --destructive: 15 100% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 161 85% 43%;
+    --success-foreground: 0 0% 100%;
+    --border: 276 5% 20%;
+    --input: 276 5% 20%;
+    --ring: 276 5% 80%;
+    --sidebar-background: 276 5% 12%;
     --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 161 85% 42%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 260 5% 28%;
+    --sidebar-primary: 0 0% 98%;
+    --sidebar-primary-foreground: 276 5% 20%;
+    --sidebar-accent: 276 5% 18%;
     --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 260 5% 28%;
-    --sidebar-ring: 214.3 31.8% 91.4%;
+    --sidebar-border: 276 5% 20%;
+    --sidebar-ring: 276 5% 80%;
   }
 
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-}
-
-@layer components {
-  .badge-separando {
-    @apply bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 font-bold uppercase px-2.5 py-1 rounded-md text-[10px] tracking-wider border border-transparent;
-  }
-  .badge-separado {
-    @apply bg-[#10c98f] text-white font-bold uppercase px-2.5 py-1 rounded-md text-[10px] tracking-wider shadow-sm border border-transparent;
-  }
-  .badge-finalizado {
-    @apply bg-[#10c98f] text-white font-bold uppercase px-2.5 py-1 rounded-md text-[10px] tracking-wider shadow-sm border border-transparent;
-  }
-  .badge-pendente {
-    @apply bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 font-bold uppercase px-2.5 py-1 rounded-md text-[10px] tracking-wider border border-transparent;
-  }
-  .field-label {
-    @apply text-xs font-bold uppercase tracking-wider text-muted-foreground font-sans block mb-1;
-  }
-  .field-value {
-    @apply text-base font-medium font-sans;
-  }
-  .font-id {
-    @apply font-mono tracking-tight text-sm font-semibold;
-  }
-
-  .card-hover {
-    @apply transition-all duration-300 ease-in-out hover:shadow-lg hover:-translate-y-0.5;
-  }
-
-  .status-card-separando {
-    @apply border-l-[6px] border-l-blue-500 card-hover;
-  }
-  .status-card-separado {
-    @apply border-l-[6px] border-l-[#10c98f] card-hover;
+  section[aria-label='Notifications alt+T'] {
+    padding: 0 !important;
+    margin: 0 !important;
   }
 }
 
 @layer utilities {
-  .animate-slide-in-right {
-    animation: slide-in-right 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  .status-card {
+    @apply bg-card border rounded-md shadow-sm relative overflow-hidden transition-all duration-200 hover:shadow-md;
+  }
+
+  .status-card-blue {
+    border-left: 6px solid #3b82f6;
+  }
+
+  .status-card-green {
+    border-left: 6px solid #10c98f;
+  }
+
+  .status-card-orange {
+    border-left: 6px solid #f97316;
+  }
+
+  .status-card-primary {
+    border-left: 6px solid hsl(var(--primary));
+  }
+
+  .badge-separando {
+    @apply bg-blue-100 text-blue-800 font-bold uppercase text-[10px] px-2 py-0.5 rounded inline-flex items-center tracking-wider dark:bg-blue-900/50 dark:text-blue-300;
+  }
+
+  .badge-separado {
+    @apply bg-green-100 text-green-800 font-bold uppercase text-[10px] px-2 py-0.5 rounded inline-flex items-center tracking-wider dark:bg-green-900/50 dark:text-green-300;
+  }
+
+  .badge-finalizado {
+    @apply bg-[#10c98f] text-white font-bold uppercase text-[10px] px-2 py-0.5 rounded inline-flex items-center tracking-wider;
+  }
+
+  .field-label {
+    @apply text-xs font-bold uppercase text-muted-foreground mb-1.5 block tracking-wider;
+  }
+
+  .field-value {
+    @apply text-sm font-medium text-foreground;
+  }
+
+  @keyframes shake {
+
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+
+    20%,
+    60% {
+      transform: translateX(-4px);
+    }
+
+    40%,
+    80% {
+      transform: translateX(4px);
+    }
+  }
+
+  .animate-shake {
+    animation: shake 0.4s ease-in-out;
   }
 
   @keyframes slide-in-right {
@@ -142,49 +165,44 @@
       transform: translateX(100%);
       opacity: 0;
     }
+
     to {
       transform: translateX(0);
       opacity: 1;
     }
   }
 
-  /* KEEP ALL THE ANIMATIONS CLASSES THAT ARE USED BELOW */
+  .animate-slide-in-right {
+    animation: slide-in-right 0.3s ease-out forwards;
+  }
+
   @keyframes fade-in {
     from {
       opacity: 0;
     }
-    to {
-      opacity: 1;
-    }
-  }
 
-  @keyframes fade-out {
-    from {
-      opacity: 1;
-    }
     to {
-      opacity: 0;
-    }
-  }
-
-  @keyframes fade-in-up {
-    from {
-      transform: translateY(10px);
-      opacity: 0;
-    }
-    to {
-      transform: translateY(0);
       opacity: 1;
     }
   }
 
   .animate-fade-in {
-    animation: fade-in 0.5s ease-out;
+    animation: fade-in 0.3s ease-out forwards;
   }
-  .animate-fade-out {
-    animation: fade-out 0.5s ease-out;
+
+  @keyframes pulse-subtle {
+
+    0%,
+    100% {
+      opacity: 1;
+    }
+
+    50% {
+      opacity: 0.7;
+    }
   }
-  .animate-fade-in-up {
-    animation: fade-in-up 0.6s ease-out;
+
+  .animate-pulse-subtle {
+    animation: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 }

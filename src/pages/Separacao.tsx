@@ -1,208 +1,330 @@
-import { useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+import { useMemo, useState, useEffect } from 'react'
+import { Plus, CalendarDays } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { DateRange } from 'react-day-picker'
+import { AppLayout } from '@/components/layout/AppLayout'
+import { FilterDropdown } from '@/components/ui/filter-dropdown'
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from '@/components/ui/sheet'
-import { useToast } from '@/hooks/use-toast'
-import { Package, User, MapPin, Box } from 'lucide-react'
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { DateRangePicker } from '@/components/ui/date-range-picker'
+import { DateSection } from '@/components/separacao/DateSection'
+import { SeparacaoCard } from '@/components/separacao/SeparacaoCard'
+import { EmptyState } from '@/components/separacao/EmptyState'
+import { LoadingSkeleton } from '@/components/separacao/LoadingSkeleton'
+import { SeparacaoFormModal } from '@/components/separacao/SeparacaoFormModal'
+import { CreateRouteModal } from '@/components/separacao/CreateRouteModal'
+import { Button } from '@/components/ui/button'
+import { useSeparacoes, Separacao } from '@/hooks/useSeparacoes'
+import { FiltroSegmento, StatusSeparacao } from '@/types/separacao'
+import { useUserRole } from '@/hooks/useUserRole'
+import {
+  format,
+  subDays,
+  subMonths,
+  isAfter,
+  isBefore,
+  startOfDay,
+  parseISO,
+  isEqual,
+  eachDayOfInterval,
+} from 'date-fns'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Package, Scissors, PackageCheck, ShieldCheck } from 'lucide-react'
 
-type OrderStatus = 'separando' | 'separado'
+export default function SeparacaoPage() {
+  const navigate = useNavigate()
+  const { separacoes, isLoading, updateStatus, deleteSeparacao, refetch } = useSeparacoes()
+  const { isAdmin } = useUserRole()
+  const [filtro, setFiltro] = useState<FiltroSegmento>('todas')
+  const [statusFilter, setStatusFilter] = useState<'todos' | StatusSeparacao>('todos')
+  const [tipoPedidoFilter, setTipoPedidoFilter] = useState<'todos' | 'normal' | 'garantia'>('todos')
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
+  const [isFormModalOpen, setIsFormModalOpen] = useState(false)
+  const [editingSeparacao, setEditingSeparacao] = useState<Separacao | null>(null)
+  const [highlightedId, setHighlightedId] = useState<string | null>(null)
 
-interface Order {
-  id: string
-  client: string
-  items: number
-  zone: string
-  status: OrderStatus
-  priority: boolean
-}
+  // Route modal state
+  const [routeModalData, setRouteModalData] = useState<{
+    isOpen: boolean
+    date: Date
+    deliveries: Separacao[]
+  } | null>(null)
 
-const initialOrders: Order[] = [
-  {
-    id: 'LCN-9012',
-    client: 'Hospital Santa Maria',
-    items: 45,
-    zone: 'A1',
-    status: 'separando',
-    priority: true,
-  },
-  {
-    id: 'LCN-9013',
-    client: 'Farmácia Central',
-    items: 12,
-    zone: 'B3',
-    status: 'separando',
-    priority: false,
-  },
-  {
-    id: 'LCN-9014',
-    client: 'Clínica Vida',
-    items: 8,
-    zone: 'A2',
-    status: 'separado',
-    priority: false,
-  },
-  {
-    id: 'LCN-9015',
-    client: 'Laboratório Exame',
-    items: 120,
-    zone: 'C1',
-    status: 'separando',
-    priority: true,
-  },
-  {
-    id: 'LCN-9016',
-    client: 'Distribuidora Sul',
-    items: 55,
-    zone: 'B1',
-    status: 'separado',
-    priority: false,
-  },
-]
+  // Clear highlight after 2 seconds
+  useEffect(() => {
+    if (highlightedId) {
+      const timer = setTimeout(() => setHighlightedId(null), 2000)
+      return () => clearTimeout(timer)
+    }
+  }, [highlightedId])
 
-export default function Separacao() {
-  const [orders, setOrders] = useState(initialOrders)
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
-  const { toast } = useToast()
+  // Filter logic - combines segment filter and date range filter
+  const filteredSeparacoes = useMemo(() => {
+    const today = startOfDay(new Date())
 
-  const handleFinalize = (id: string) => {
-    setOrders(orders.map((o) => (o.id === id ? { ...o, status: 'separado' as OrderStatus } : o)))
-    setSelectedOrder(null)
-    toast({
-      title: 'Separação Finalizada',
-      description: `Pedido ${id} marcado como pronto para despacho.`,
-      className: 'bg-[#10c98f] text-white border-none',
+    return separacoes.filter((s) => {
+      const entregaDate = startOfDay(parseISO(s.data_entrega))
+
+      // Apply status filter
+      if (statusFilter !== 'todos' && s.status !== statusFilter) return false
+
+      // Apply tipo pedido filter
+      if (tipoPedidoFilter !== 'todos') {
+        const tipo = s.tipo_pedido || 'normal'
+        if (tipoPedidoFilter === 'garantia' && tipo !== 'garantia' && !s.inclui_garantia)
+          return false
+        if (tipoPedidoFilter === 'normal' && (tipo === 'garantia' || s.inclui_garantia))
+          return false
+      }
+
+      // Apply date range filter first if active
+      if (dateRange?.from) {
+        const rangeStart = startOfDay(dateRange.from)
+        const rangeEnd = dateRange.to ? startOfDay(dateRange.to) : rangeStart
+
+        const inRange =
+          (isAfter(entregaDate, rangeStart) || isEqual(entregaDate, rangeStart)) &&
+          (isBefore(entregaDate, rangeEnd) || isEqual(entregaDate, rangeEnd))
+
+        if (!inRange) return false
+      }
+
+      // Apply segment filter
+      let startDate: Date | null = null
+      switch (filtro) {
+        case 'ultima-semana':
+          startDate = subDays(today, 7)
+          break
+        case 'ultimo-mes':
+          startDate = subMonths(today, 1)
+          break
+        case 'ultimos-3-meses':
+          startDate = subMonths(today, 3)
+          break
+        case 'ultimos-6-meses':
+          startDate = subMonths(today, 6)
+          break
+        default:
+          startDate = null
+      }
+
+      if (!startDate) return true
+      return isAfter(entregaDate, startDate) || isEqual(entregaDate, startDate)
     })
+  }, [separacoes, filtro, dateRange, statusFilter, tipoPedidoFilter])
+
+  // Group by date - expand "em_separacao" entries across days from updated_at to data_entrega
+  const groupedByDate = useMemo(() => {
+    const groups: { [key: string]: Separacao[] } = {}
+    const today = startOfDay(new Date())
+
+    const addToGroup = (dateKey: string, s: Separacao) => {
+      if (!groups[dateKey]) groups[dateKey] = []
+      if (!groups[dateKey].some((existing) => existing.id === s.id)) {
+        groups[dateKey].push(s)
+      }
+    }
+
+    filteredSeparacoes.forEach((s) => {
+      if (s.status === 'em_separacao' && s.data_inicio_separacao) {
+        // Show on every day from data_inicio_separacao to data_entrega
+        const statusChangedAt = startOfDay(parseISO(s.data_inicio_separacao))
+        const deliveryDate = startOfDay(parseISO(s.data_entrega))
+        const rangeStart = isAfter(statusChangedAt, today) ? today : statusChangedAt
+
+        if (!isAfter(rangeStart, deliveryDate)) {
+          const days = eachDayOfInterval({ start: rangeStart, end: deliveryDate })
+          days.forEach((day) => {
+            addToGroup(format(day, 'yyyy-MM-dd'), s)
+          })
+        } else {
+          addToGroup(s.data_entrega, s)
+        }
+      } else {
+        addToGroup(s.data_entrega, s)
+      }
+    })
+
+    // Sort by date (ascending - closest first)
+    return Object.entries(groups)
+      .filter(([dateStr]) => {
+        const d = parseISO(dateStr)
+        return !isNaN(d.getTime())
+      })
+      .sort(([a], [b]) => new Date(a).getTime() - new Date(b).getTime())
+      .map(([dateStr, items]) => ({
+        date: parseISO(dateStr),
+        items,
+      }))
+  }, [filteredSeparacoes])
+
+  const handleStatusChange = (id: string, newStatus: StatusSeparacao) => {
+    updateStatus(id, newStatus)
+  }
+
+  const handleFormSuccess = () => {
+    refetch()
+    setEditingSeparacao(null)
+  }
+
+  const handleOpenCreate = () => {
+    setEditingSeparacao(null)
+    setIsFormModalOpen(true)
+  }
+
+  const handleOpenEdit = (separacao: Separacao) => {
+    setEditingSeparacao(separacao)
+    setIsFormModalOpen(true)
+  }
+
+  const handleCloseModal = () => {
+    setIsFormModalOpen(false)
+    setEditingSeparacao(null)
+  }
+
+  const handleCreateRoute = (date: Date, deliveries: Separacao[]) => {
+    setRouteModalData({ isOpen: true, date, deliveries })
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-end">
-        <div>
-          <h2 className="text-3xl font-serif font-bold tracking-tight mb-2">Fila de Separação</h2>
-          <p className="text-muted-foreground">Gerencie os pedidos em fase de picking e packing.</p>
+    <AppLayout>
+      {/* Page Header */}
+      <div className="sticky top-16 z-40 bg-card border-b border-border shadow-header">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <h1 className="text-2xl font-bold text-foreground">Separação e Entregas</h1>
+              <div className="flex items-center gap-3 flex-wrap">
+                <Button
+                  onClick={handleOpenCreate}
+                  className="bg-success hover:bg-success-dark text-success-foreground"
+                >
+                  <Plus className="w-5 h-5 mr-2 sm:mr-2" />
+                  <span className="hidden sm:inline">Nova Separação</span>
+                  <span className="sm:hidden">Nova</span>
+                </Button>
+                <Button variant="outline" onClick={() => navigate('/calendario')} className="gap-2">
+                  <CalendarDays className="w-4 h-4" />
+                  <span className="hidden sm:inline">Ver em Calendário</span>
+                </Button>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 flex-wrap">
+              <Tabs
+                value={statusFilter}
+                onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}
+                className="w-full sm:w-auto"
+              >
+                <TabsList className="h-9">
+                  <TabsTrigger value="todos" className="text-xs px-3 gap-1.5">
+                    Todos
+                  </TabsTrigger>
+                  <TabsTrigger value="material_solicitado" className="text-xs px-3 gap-1.5">
+                    <Package className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Solicitado</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="em_separacao" className="text-xs px-3 gap-1.5">
+                    <Scissors className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Em Separação</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="separado" className="text-xs px-3 gap-1.5">
+                    <PackageCheck className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Separado</span>
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+            <div className="flex items-center gap-3 flex-wrap">
+              <Select
+                value={tipoPedidoFilter}
+                onValueChange={(v) => setTipoPedidoFilter(v as typeof tipoPedidoFilter)}
+              >
+                <SelectTrigger className="w-[160px] bg-card border-border">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-muted-foreground" />
+                    <SelectValue />
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os tipos</SelectItem>
+                  <SelectItem value="normal">Normal</SelectItem>
+                  <SelectItem value="garantia">Garantia</SelectItem>
+                </SelectContent>
+              </Select>
+              <DateRangePicker
+                value={dateRange}
+                onChange={setDateRange}
+                className="w-full sm:w-auto"
+              />
+              <FilterDropdown value={filtro} onChange={setFiltro} />
+              {filteredSeparacoes.length > 0 && (
+                <span className="text-sm text-muted-foreground">
+                  Mostrando {filteredSeparacoes.length}{' '}
+                  {filteredSeparacoes.length === 1 ? 'entrega' : 'entregas'}
+                </span>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {orders.map((order) => (
-          <Card
-            key={order.id}
-            className={`cursor-pointer ${order.status === 'separando' ? 'status-card-separando' : 'status-card-separado'} ${order.priority && order.status === 'separando' ? 'animate-pulse-subtle' : ''}`}
-            onClick={() => setSelectedOrder(order)}
-          >
-            <CardHeader className="pb-2">
-              <div className="flex justify-between items-start">
-                <CardTitle className="font-id text-lg">{order.id}</CardTitle>
-                <span className={`badge-${order.status}`}>{order.status}</span>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div>
-                <span className="field-label">Cliente</span>
-                <span className="field-value line-clamp-1">{order.client}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <div>
-                  <span className="field-label">Zona</span>
-                  <span className="field-value flex items-center">
-                    <MapPin className="h-3 w-3 mr-1 text-muted-foreground" /> {order.zone}
-                  </span>
-                </div>
-                <div>
-                  <span className="field-label">Itens</span>
-                  <span className="field-value flex items-center">
-                    <Package className="h-3 w-3 mr-1 text-muted-foreground" /> {order.items} un
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+      {/* Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {isLoading ? (
+          <LoadingSkeleton />
+        ) : groupedByDate.length === 0 ? (
+          <EmptyState />
+        ) : (
+          groupedByDate.map(({ date, items }) => (
+            <DateSection
+              key={date.toISOString()}
+              date={date}
+              count={items.length}
+              onCreateRoute={() =>
+                handleCreateRoute(
+                  date,
+                  items.filter((s) => s.tipo_entrega !== 'cliente_retira'),
+                )
+              }
+            >
+              {items.map((separacao) => (
+                <SeparacaoCard
+                  key={separacao.id}
+                  separacao={separacao}
+                  onStatusChange={handleStatusChange}
+                  onEdit={handleOpenEdit}
+                  onDelete={deleteSeparacao}
+                  isHighlighted={separacao.id === highlightedId}
+                  isAdmin={isAdmin}
+                />
+              ))}
+            </DateSection>
+          ))
+        )}
       </div>
 
-      <Sheet open={!!selectedOrder} onOpenChange={(open) => !open && setSelectedOrder(null)}>
-        <SheetContent className="w-full sm:max-w-md border-l-0 shadow-2xl flex flex-col">
-          <SheetHeader className="mb-6 border-b pb-6">
-            <div className="flex items-center justify-between mb-2">
-              <span className={`badge-${selectedOrder?.status}`}>{selectedOrder?.status}</span>
-              {selectedOrder?.priority && <Badge variant="destructive">Alta Prioridade</Badge>}
-            </div>
-            <SheetTitle className="font-id text-3xl">{selectedOrder?.id}</SheetTitle>
-            <SheetDescription>Detalhes operativos da separação.</SheetDescription>
-          </SheetHeader>
+      {/* Separacao Form Modal (Create/Edit) */}
+      <SeparacaoFormModal
+        isOpen={isFormModalOpen}
+        onClose={handleCloseModal}
+        onSuccess={handleFormSuccess}
+        editData={editingSeparacao}
+      />
 
-          <div className="flex-1 space-y-8 overflow-y-auto pr-4">
-            <div className="space-y-4 bg-muted/50 p-4 rounded-lg">
-              <div>
-                <span className="field-label flex items-center">
-                  <User className="h-4 w-4 mr-2" /> Cliente Destino
-                </span>
-                <span className="field-value text-lg">{selectedOrder?.client}</span>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <span className="field-label flex items-center">
-                    <MapPin className="h-4 w-4 mr-2" /> Zona de Picking
-                  </span>
-                  <span className="field-value text-lg">{selectedOrder?.zone}</span>
-                </div>
-                <div>
-                  <span className="field-label flex items-center">
-                    <Package className="h-4 w-4 mr-2" /> Total de Itens
-                  </span>
-                  <span className="field-value text-lg">{selectedOrder?.items}</span>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <h3 className="font-serif text-lg font-semibold mb-4 flex items-center">
-                <Box className="mr-2 h-5 w-5" /> Checklist de Itens
-              </h3>
-              <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <div
-                    key={i}
-                    className="flex items-center justify-between p-3 border rounded-md bg-card"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="h-4 w-4 rounded border border-primary/50" />
-                      <span className="font-medium text-sm">
-                        SKU-{Math.floor(Math.random() * 10000)} - Lote C
-                      </span>
-                    </div>
-                    <span className="text-sm font-mono text-muted-foreground">
-                      {Math.floor(Math.random() * 50)} cx
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-6 border-t mt-auto">
-            {selectedOrder?.status === 'separando' ? (
-              <Button
-                className="w-full h-14 text-lg font-bold bg-[#10c98f] hover:bg-[#0da172] text-white shadow-lg"
-                onClick={() => handleFinalize(selectedOrder.id)}
-              >
-                Finalizar Separação
-              </Button>
-            ) : (
-              <Button disabled variant="outline" className="w-full h-14 text-lg font-bold">
-                Pronto para Despacho
-              </Button>
-            )}
-          </div>
-        </SheetContent>
-      </Sheet>
-    </div>
+      {/* Create Route Modal */}
+      {routeModalData && (
+        <CreateRouteModal
+          isOpen={routeModalData.isOpen}
+          onClose={() => setRouteModalData(null)}
+          date={routeModalData.date}
+          deliveries={routeModalData.deliveries}
+        />
+      )}
+    </AppLayout>
   )
 }

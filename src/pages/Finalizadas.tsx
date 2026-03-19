@@ -1,126 +1,130 @@
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { Card, CardContent } from '@/components/ui/card'
+import { useState, useMemo } from 'react'
+import { Search, AlertCircle, RefreshCw } from 'lucide-react'
+import { AppLayout } from '@/components/layout/AppLayout'
+import { FilterDropdown } from '@/components/ui/filter-dropdown'
+import { EntregaFinalizadaRow } from '@/components/finalizadas/EntregaFinalizadaRow'
+import { EntregaDetalhesModal } from '@/components/finalizadas/EntregaDetalhesModal'
+import { FinalizadasListSkeleton } from '@/components/finalizadas/FinalizadasListSkeleton'
+import { EmptyState } from '@/components/separacao/EmptyState'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Search, Filter, Download } from 'lucide-react'
+import { useEntregasFinalizadas, EntregaFinalizada } from '@/hooks/useEntregasFinalizadas'
+import { FiltroSegmento } from '@/types/separacao'
+import { subDays, subMonths, isAfter, startOfDay, parseISO, format } from 'date-fns'
 
-const finishedDeliveries = [
-  {
-    id: 'LCN-8701',
-    client: 'Pão de Açúcar',
-    date: '19 Mar 2026',
-    time: '14:23',
-    driver: 'Carlos S.',
-    status: 'Entregue',
-  },
-  {
-    id: 'LCN-8702',
-    client: 'Hospital Santa Joana',
-    date: '19 Mar 2026',
-    time: '15:45',
-    driver: 'Roberto M.',
-    status: 'Entregue',
-  },
-  {
-    id: 'LCN-8705',
-    client: 'Drogaria São Paulo',
-    date: '18 Mar 2026',
-    time: '09:12',
-    driver: 'Ana L.',
-    status: 'Entregue',
-  },
-  {
-    id: 'LCN-8710',
-    client: 'UBS Pinheiros',
-    date: '18 Mar 2026',
-    time: '11:30',
-    driver: 'Carlos S.',
-    status: 'Entregue',
-  },
-  {
-    id: 'LCN-8712',
-    client: 'Hospital das Clínicas',
-    date: '17 Mar 2026',
-    time: '16:05',
-    driver: 'Roberto M.',
-    status: 'Entregue',
-  },
-]
+export default function EntregasFinalizadasPage() {
+  const [filtro, setFiltro] = useState<FiltroSegmento>('todas')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedEntrega, setSelectedEntrega] = useState<EntregaFinalizada | null>(null)
+  const { entregas, isLoading, error, refetch } = useEntregasFinalizadas()
 
-export default function Finalizadas() {
+  const filteredEntregas = useMemo(() => {
+    const today = startOfDay(new Date())
+    let startDate: Date | null = null
+
+    switch (filtro) {
+      case 'ultima-semana':
+        startDate = subDays(today, 7)
+        break
+      case 'ultimo-mes':
+        startDate = subMonths(today, 1)
+        break
+      case 'ultimos-3-meses':
+        startDate = subMonths(today, 3)
+        break
+      case 'ultimos-6-meses':
+        startDate = subMonths(today, 6)
+        break
+      default:
+        startDate = null
+    }
+
+    return entregas
+      .filter((e) => {
+        if (startDate) {
+          const entregaDate = startOfDay(parseISO(e.data_entrega_real))
+          if (
+            !isAfter(entregaDate, startDate) &&
+            format(entregaDate, 'yyyy-MM-dd') !== format(startDate, 'yyyy-MM-dd')
+          ) {
+            return false
+          }
+        }
+        if (searchQuery.trim()) {
+          const query = searchQuery.toLowerCase()
+          return (
+            e.cliente.toLowerCase().includes(query) || e.codigo_obra.toLowerCase().includes(query)
+          )
+        }
+        return true
+      })
+      .sort(
+        (a, b) => new Date(b.data_entrega_real).getTime() - new Date(a.data_entrega_real).getTime(),
+      )
+  }, [entregas, filtro, searchQuery])
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
-        <div>
-          <h2 className="text-3xl font-serif font-bold tracking-tight mb-2">
-            Histórico de Entregas
-          </h2>
-          <p className="text-muted-foreground">Registro imutável de operações concluídas.</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" className="font-semibold">
-            <Download className="w-4 h-4 mr-2" /> Exportar CSV
-          </Button>
+    <AppLayout>
+      {/* Page Header */}
+      <div className="sticky top-16 z-40 bg-card border-b border-border shadow-header">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <h1 className="text-2xl font-bold text-success">Entregas Finalizadas</h1>
+              <FilterDropdown value={filtro} onChange={setFiltro} />
+            </div>
+            <div className="relative max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Buscar por cliente ou obra..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 bg-card border-border"
+              />
+            </div>
+          </div>
         </div>
       </div>
 
-      <Card className="shadow-sm">
-        <div className="p-4 border-b flex flex-col sm:flex-row gap-4 items-center bg-muted/20">
-          <div className="relative w-full sm:w-72">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Buscar por ID, Cliente..." className="pl-9 bg-background" />
+      {/* Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {isLoading ? (
+          <FinalizadasListSkeleton />
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center py-16 gap-4">
+            <AlertCircle className="w-10 h-10 text-destructive" />
+            <p className="text-sm text-muted-foreground">Erro ao carregar entregas</p>
+            <Button variant="outline" onClick={refetch}>
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Tentar novamente
+            </Button>
           </div>
-          <Button variant="outline" className="w-full sm:w-auto">
-            <Filter className="w-4 h-4 mr-2" /> Filtros Avançados
-          </Button>
-        </div>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/50">
-                <TableHead className="w-[120px] font-bold text-xs uppercase tracking-wider">
-                  ID Rastreio
-                </TableHead>
-                <TableHead className="font-bold text-xs uppercase tracking-wider">
-                  Cliente
-                </TableHead>
-                <TableHead className="font-bold text-xs uppercase tracking-wider">
-                  Data / Hora
-                </TableHead>
-                <TableHead className="font-bold text-xs uppercase tracking-wider">
-                  Motorista
-                </TableHead>
-                <TableHead className="text-right font-bold text-xs uppercase tracking-wider">
-                  Status
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {finishedDeliveries.map((delivery) => (
-                <TableRow key={delivery.id} className="hover:bg-muted/30 transition-colors">
-                  <TableCell className="font-id font-medium">{delivery.id}</TableCell>
-                  <TableCell className="font-medium text-base">{delivery.client}</TableCell>
-                  <TableCell>
-                    <div className="font-medium">{delivery.date}</div>
-                    <div className="text-xs text-muted-foreground">{delivery.time}</div>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{delivery.driver}</TableCell>
-                  <TableCell className="text-right">
-                    <span className="badge-finalizado">{delivery.status}</span>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-    </div>
+        ) : filteredEntregas.length === 0 ? (
+          <EmptyState
+            title="Nenhuma entrega finalizada encontrada"
+            subtitle="Ajuste os filtros ou realize uma busca diferente"
+          />
+        ) : (
+          <div className="bg-card rounded-xl overflow-hidden border border-border">
+            {filteredEntregas.map((entrega) => (
+              <EntregaFinalizadaRow
+                key={entrega.id}
+                entrega={entrega}
+                onOpenDetails={setSelectedEntrega}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Modal de detalhes */}
+      <EntregaDetalhesModal
+        entrega={selectedEntrega}
+        open={!!selectedEntrega}
+        onClose={() => setSelectedEntrega(null)}
+        onUpdated={refetch}
+      />
+    </AppLayout>
   )
 }

@@ -1,162 +1,377 @@
-import { useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { useState, useCallback } from 'react'
+import { Truck, Loader2, AlertTriangle, ShieldAlert } from 'lucide-react'
+import { AppLayout } from '@/components/layout/AppLayout'
+import { CodeInput } from '@/components/registrar/CodeInput'
+import { ObraResumoCard } from '@/components/registrar/ObraResumoCard'
+import { PhotoUploader } from '@/components/registrar/PhotoUploader'
+import { ReceiverInput } from '@/components/registrar/ReceiverInput'
+import { ObservationsField } from '@/components/registrar/ObservationsField'
+import { RegisterProblemModal } from '@/components/registrar/RegisterProblemModal'
+import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
+import { useSeparacoes, Separacao } from '@/hooks/useSeparacoes'
+import { useFinalizarEntrega } from '@/hooks/useFinalizarEntrega'
+import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/hooks/use-toast'
-import { Box, User, Truck, MapPin } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { format } from 'date-fns'
 
-export default function Registrar() {
+type ValidationState = 'idle' | 'loading' | 'success' | 'error'
+
+export default function RegistrarEntregaPage() {
+  const [codigoObra, setCodigoObra] = useState('')
+  const [validationState, setValidationState] = useState<ValidationState>('idle')
+  const [errorMessage, setErrorMessage] = useState('')
+  const [obraData, setObraData] = useState<Separacao | null>(null)
+  const [fotos, setFotos] = useState<File[]>([])
+  const [recebidoPor, setRecebidoPor] = useState('')
+  const [observacoes, setObservacoes] = useState('')
+
+  // New fields
+  const [quemEntregou, setQuemEntregou] = useState('')
+  const [telefoneContato, setTelefoneContato] = useState('')
+  const [dataEntrega, setDataEntrega] = useState(format(new Date(), 'yyyy-MM-dd'))
+
+  // Problem modal
+  const [isProblemModalOpen, setIsProblemModalOpen] = useState(false)
+
+  const { findByCodigoObra } = useSeparacoes()
+  const { finalizarEntrega, isSubmitting } = useFinalizarEntrega()
+  const { user } = useAuth()
   const { toast } = useToast()
-  const [loading, setLoading] = useState(false)
-  const [errorField, setErrorField] = useState<string | null>(null)
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    const form = e.target as HTMLFormElement
-    const client = (form.elements.namedItem('client') as HTMLInputElement).value
+  // Validate code: numeric 5-6 digits (codigo_obra) OR LUC-NNNN format (numero_entrega)
+  const isValidCodeFormat = (code: string) =>
+    /^[0-9]{5,6}$/.test(code) || /^LUC-\d{1,6}$/i.test(code)
 
-    if (!client) {
-      setErrorField('client')
-      setTimeout(() => setErrorField(null), 500)
+  const validateCode = useCallback(
+    async (force = false) => {
+      const trimmedCode = codigoObra.trim()
+
+      // Skip re-validation if already validated successfully (prevents blur re-trigger)
+      if (!force && validationState === 'success' && obraData) {
+        return
+      }
+
+      if (!trimmedCode) {
+        setValidationState('idle')
+        setObraData(null)
+        return
+      }
+
+      // Validate format
+      if (!isValidCodeFormat(trimmedCode)) {
+        setValidationState('error')
+        setErrorMessage(
+          'Código inválido. Use: LUC-0001 (número da entrega) ou 26001 (código da obra)',
+        )
+        setObraData(null)
+        return
+      }
+
+      setValidationState('loading')
+      setErrorMessage('')
+
+      const separacao = await findByCodigoObra(trimmedCode)
+
+      if (!separacao) {
+        setValidationState('error')
+        setErrorMessage('Código não encontrado. Verifique e tente novamente.')
+        setObraData(null)
+        return
+      }
+
+      // Check status - allow 'separado' and 'em_separacao'
+      const allowedStatuses = ['separado', 'em_separacao', 'matheus_separacao_garantia']
+
+      if (separacao.status === 'material_solicitado') {
+        setValidationState('error')
+        setErrorMessage(
+          '⚠️ Esta obra ainda está aguardando material. Aguarde ou fale com o escritório.',
+        )
+        setObraData(null)
+        return
+      }
+
+      if (separacao.status === 'pendente') {
+        setValidationState('error')
+        setErrorMessage('⚠️ Esta obra está com pendência registrada. Resolva a pendência primeiro.')
+        setObraData(null)
+        return
+      }
+
+      if (separacao.status === 'finalizado') {
+        setValidationState('error')
+        setErrorMessage('Esta obra já foi entregue anteriormente.')
+        setObraData(null)
+        return
+      }
+
+      // Success - obra found and status is valid
+      setValidationState('success')
+      setObraData(separacao)
+      setRecebidoPor(separacao.responsavel_recebimento)
+      setTelefoneContato(separacao.telefone || '')
+      setQuemEntregou('Alexandre')
+
+      toast({
+        title: 'Obra encontrada! ✓',
+        description: separacao.cliente,
+        className: 'bg-success text-success-foreground border-none',
+      })
+    },
+    [codigoObra, validationState, obraData, findByCodigoObra, toast],
+  )
+
+  const handleSubmit = async () => {
+    if (!obraData) {
+      toast({
+        title: 'Código inválido',
+        description: 'Digite um código de obra válido.',
+        variant: 'destructive',
+      })
       return
     }
 
-    setLoading(true)
-    setTimeout(() => {
-      setLoading(false)
+    if (fotos.length === 0) {
       toast({
-        title: 'Entrega Registrada',
-        description: 'Novo ID gerado: LCN-9950. Enviado para separação.',
-        className: 'bg-[#10c98f] text-white border-none',
+        title: 'Fotos obrigatórias',
+        description: 'Adicione pelo menos uma foto da entrega.',
+        variant: 'destructive',
       })
-      form.reset()
-    }, 800)
+      return
+    }
+
+    if (!recebidoPor.trim() || recebidoPor.trim().length < 3) {
+      toast({
+        title: 'Campo obrigatório',
+        description: 'Informe quem recebeu a entrega (mínimo 3 caracteres).',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    if (!quemEntregou.trim() || quemEntregou.trim().length < 2) {
+      toast({
+        title: 'Campo obrigatório',
+        description: 'Informe quem realizou a entrega.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    const success = await finalizarEntrega({
+      separacao: obraData,
+      recebidoPor: recebidoPor.trim(),
+      fotos,
+      observacoes: observacoes.trim(),
+      dataEntrega,
+    })
+
+    if (success) {
+      // Reset form
+      setCodigoObra('')
+      setValidationState('idle')
+      setObraData(null)
+      setFotos([])
+      setRecebidoPor('')
+      setObservacoes('')
+      setQuemEntregou('')
+      setTelefoneContato('')
+      setDataEntrega(format(new Date(), 'yyyy-MM-dd'))
+    }
   }
 
+  const handleProblemSuccess = () => {
+    // Reset form after registering problem
+    setCodigoObra('')
+    setValidationState('idle')
+    setObraData(null)
+    setFotos([])
+    setRecebidoPor('')
+    setObservacoes('')
+    setQuemEntregou('')
+    setTelefoneContato('')
+    setDataEntrega(format(new Date(), 'yyyy-MM-dd'))
+  }
+
+  const canSubmit =
+    obraData &&
+    fotos.length > 0 &&
+    recebidoPor.trim().length >= 3 &&
+    quemEntregou.trim().length >= 2 &&
+    !isSubmitting
+
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div>
-        <h2 className="text-3xl font-serif font-bold tracking-tight mb-2">
-          Registrar Nova Entrega
-        </h2>
-        <p className="text-muted-foreground">
-          Insira os dados do pedido para iniciar o fluxo logístico.
-        </p>
+    <AppLayout>
+      <div className="max-w-2xl mx-auto px-4 py-6 pb-32">
+        {/* Header */}
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
+            <Truck className="w-5 h-5 text-primary-foreground" />
+          </div>
+          <h1 className="text-xl font-bold text-foreground">Registrar Entrega</h1>
+        </div>
+
+        {/* Form */}
+        <div className="space-y-6">
+          {/* Step 1: Code Input */}
+          <CodeInput
+            value={codigoObra}
+            onChange={setCodigoObra}
+            onValidate={validateCode}
+            validationState={validationState}
+            errorMessage={errorMessage}
+          />
+
+          {/* Step 2: Obra Summary (when validated) */}
+          {obraData && <ObraResumoCard separacao={obraData} />}
+
+          {/* Warranty alert */}
+          {obraData && (obraData.inclui_garantia || obraData.tipo_pedido === 'garantia') && (
+            <div className="bg-amber-50 dark:bg-amber-950/30 border-2 border-amber-400 rounded-xl p-5 space-y-3">
+              <div className="flex items-center gap-2">
+                <ShieldAlert className="w-5 h-5 text-amber-600 flex-shrink-0" />
+                <h3 className="text-base font-bold text-amber-800 dark:text-amber-300 uppercase">
+                  {obraData.tipo_pedido === 'garantia'
+                    ? '⚠️ Entrega de Garantia'
+                    : '⚠️ Inclui Peça de Garantia'}
+                </h3>
+              </div>
+              {obraData.tipo_pedido === 'garantia' && obraData.garantia_detalhes && (
+                <div>
+                  <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase">
+                    Detalhes da garantia:
+                  </p>
+                  <p className="text-sm text-amber-900 dark:text-amber-200 mt-1">
+                    {obraData.garantia_detalhes}
+                  </p>
+                </div>
+              )}
+              {obraData.inclui_garantia && obraData.garantia_peca && (
+                <div>
+                  <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase">
+                    Peça de garantia:
+                  </p>
+                  <p className="text-sm text-amber-900 dark:text-amber-200 mt-1 font-medium">
+                    {obraData.garantia_peca}
+                  </p>
+                </div>
+              )}
+              {obraData.inclui_garantia && obraData.garantia_motivo && (
+                <div>
+                  <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase">
+                    Motivo:
+                  </p>
+                  <p className="text-sm text-amber-900 dark:text-amber-200 mt-1">
+                    {obraData.garantia_motivo}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Step 3: Photo Upload */}
+          {obraData && <PhotoUploader fotos={fotos} onFotosChange={setFotos} />}
+
+          {/* Step 4: Quem Entregou */}
+          {obraData && (
+            <div className="bg-card rounded-xl p-5 shadow-card">
+              <Label className="field-label mb-2 block">Quem Realizou a Entrega *</Label>
+              <Input
+                value={quemEntregou}
+                onChange={(e) => setQuemEntregou(e.target.value)}
+                placeholder="Nome do entregador"
+                className="h-14"
+              />
+            </div>
+          )}
+
+          {/* Step 5: Receiver Confirmation */}
+          {obraData && <ReceiverInput value={recebidoPor} onChange={setRecebidoPor} />}
+
+          {/* Step 6: Telefone (editable) */}
+          {obraData && (
+            <div className="bg-card rounded-xl p-5 shadow-card">
+              <Label className="field-label mb-2 block">Telefone de Contato</Label>
+              <Input
+                type="tel"
+                value={telefoneContato}
+                onChange={(e) => setTelefoneContato(e.target.value)}
+                placeholder="(16) 99999-9999"
+                className="h-14"
+              />
+              <p className="text-xs text-muted-foreground mt-1">Pode editar se o telefone mudou</p>
+            </div>
+          )}
+
+          {/* Step 7: Data da Entrega (editable) */}
+          {obraData && (
+            <div className="bg-card rounded-xl p-5 shadow-card">
+              <Label className="field-label mb-2 block">Data Real da Entrega</Label>
+              <Input
+                type="date"
+                value={dataEntrega}
+                onChange={(e) => setDataEntrega(e.target.value)}
+                max={format(new Date(), 'yyyy-MM-dd')}
+                className="h-14"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Altere se a entrega foi em outro dia
+              </p>
+            </div>
+          )}
+
+          {/* Step 8: Observations */}
+          {obraData && <ObservationsField value={observacoes} onChange={setObservacoes} />}
+        </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <Card className="shadow-sm border-t-4 border-t-primary">
-          <CardHeader>
-            <CardTitle className="flex items-center text-xl font-serif">
-              <User className="mr-2 h-5 w-5" /> Dados do Cliente
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="client" className="field-label">
-                  Razão Social / Nome
-                </Label>
-                <Input
-                  id="client"
-                  name="client"
-                  className={cn(errorField === 'client' && 'border-destructive animate-shake')}
-                  placeholder="Ex: Hospital Santa Cruz"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="cnpj" className="field-label">
-                  CNPJ / Documento
-                </Label>
-                <Input id="cnpj" placeholder="00.000.000/0000-00" className="font-mono" />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="address" className="field-label flex items-center">
-                <MapPin className="mr-1 w-3 h-3" /> Endereço Completo
-              </Label>
-              <Input id="address" placeholder="Rua, Número, Bairro, Cidade - UF" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card className="shadow-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center text-xl font-serif">
-                <Box className="mr-2 h-5 w-5" /> Itens e Carga
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="volume" className="field-label">
-                    Volumes (Caixas)
-                  </Label>
-                  <Input id="volume" type="number" min="1" placeholder="0" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="weight" className="field-label">
-                    Peso Total (kg)
-                  </Label>
-                  <Input id="weight" type="number" step="0.1" placeholder="0.00" />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="obs" className="field-label">
-                  Observações de Manuseio
-                </Label>
-                <Textarea
-                  id="obs"
-                  placeholder="Ex: Carga frágil, manter refrigerado..."
-                  className="resize-none"
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center text-xl font-serif">
-                <Truck className="mr-2 h-5 w-5" /> Logística
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="deadline" className="field-label">
-                  Prazo de Entrega Máximo
-                </Label>
-                <Input id="deadline" type="datetime-local" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="priority" className="field-label">
-                  Nível de Prioridade
-                </Label>
-                <select
-                  id="priority"
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                >
-                  <option value="normal">Normal</option>
-                  <option value="high">Alta (Urgente)</option>
-                  <option value="critical">Crítica (Emergência Médica)</option>
-                </select>
-              </div>
-            </CardContent>
-          </Card>
+      {/* Fixed Submit Buttons */}
+      {obraData && (
+        <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border shadow-lg p-4">
+          <div className="max-w-2xl mx-auto flex gap-3">
+            <Button
+              onClick={handleSubmit}
+              disabled={!canSubmit}
+              className={cn(
+                'flex-1 h-16 text-lg font-bold rounded-xl transition-all',
+                canSubmit
+                  ? 'bg-success hover:bg-success-dark text-success-foreground'
+                  : 'bg-muted text-muted-foreground cursor-not-allowed',
+              )}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  Finalizando...
+                </>
+              ) : (
+                '✓ Finalizar Entrega'
+              )}
+            </Button>
+            <Button
+              onClick={() => setIsProblemModalOpen(true)}
+              variant="destructive"
+              className="flex-1 h-16 text-lg font-bold rounded-xl"
+            >
+              <AlertTriangle className="w-5 h-5 mr-2" />
+              Registrar Problema
+            </Button>
+          </div>
         </div>
+      )}
 
-        <div className="flex justify-end pt-4">
-          <Button type="button" variant="outline" className="mr-4">
-            Cancelar
-          </Button>
-          <Button type="submit" className="min-w-[200px] h-12 text-lg font-bold" disabled={loading}>
-            {loading ? 'Processando...' : 'Gerar Rastreio e Iniciar'}
-          </Button>
-        </div>
-      </form>
-    </div>
+      {/* Problem Modal */}
+      {obraData && (
+        <RegisterProblemModal
+          isOpen={isProblemModalOpen}
+          onClose={() => setIsProblemModalOpen(false)}
+          separacao={obraData}
+          onSuccess={handleProblemSuccess}
+        />
+      )}
+    </AppLayout>
   )
 }
