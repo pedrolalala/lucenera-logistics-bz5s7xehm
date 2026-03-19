@@ -139,7 +139,6 @@
   }
 
   @keyframes shake {
-
     0%,
     100% {
       transform: translateX(0);
@@ -191,7 +190,6 @@
   }
 
   @keyframes pulse-subtle {
-
     0%,
     100% {
       opacity: 1;

@@ -239,7 +239,8 @@ export default function RouteOptimizerPage() {
                         key={delivery.id}
                         className={`
                           rounded-xl border-2 p-4 transition-all
-                          ${isScheduled ? 'bg-orange-50 border-orange-200' : 'bg-card border-border'
+                          ${
+                            isScheduled ? 'bg-orange-50 border-orange-200' : 'bg-card border-border'
                           }
                         `}
                       >
