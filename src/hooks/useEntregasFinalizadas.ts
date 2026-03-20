@@ -3,13 +3,27 @@ import { supabase } from '@/lib/supabase/client'
 
 export type EntregaFinalizada = {
   id: string
+  separacao_id?: string
   cliente: string
-  codigo_obra: string
+  codigo_obra: string | number
   data_entrega_real: string
+  data_solicitacao?: string
+  created_at?: string
   recebido_por?: string
   numero_pedido?: string
   endereco?: string
   observacoes?: string
+  numero_entrega?: string
+  gestora_equipe?: string
+  separacoes?:
+    | {
+        inclui_garantia?: boolean
+        data_inicio_separacao?: string
+      }
+    | null
+    | any
+  // other fields if needed
+  [key: string]: any
 }
 
 export function useEntregasFinalizadas() {
@@ -23,7 +37,7 @@ export function useEntregasFinalizadas() {
     try {
       const { data, error: err } = await supabase
         .from('entregas_finalizadas')
-        .select('*')
+        .select('*, separacoes(inclui_garantia, data_inicio_separacao)')
         .order('data_entrega_real', { ascending: false })
 
       if (err) throw err
