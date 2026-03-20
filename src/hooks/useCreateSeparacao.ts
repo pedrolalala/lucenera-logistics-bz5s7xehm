@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { supabase } from '@/integrations/supabase/client'
+import { supabase } from '@/lib/supabase/client'
 import { useToast } from '@/hooks/use-toast'
 
 // Updated to match new database constraint: 'tabela', 'arquivos', or null
@@ -79,6 +79,7 @@ export function useCreateSeparacao() {
         .from('separacoes')
         .insert({
           codigo_obra: data.codigo_obra,
+          numero_entrega: `LUC-${Math.floor(1000 + Math.random() * 9000).toString()}`,
           numero_pedido: data.numero_pedido || null,
           vendedor: data.vendedor || null,
           gestora_equipe: data.gestora_equipe,

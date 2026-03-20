@@ -146,6 +146,8 @@ export function SeparacaoFormModal({ isOpen, onClose, onSuccess, editData }: any
       const payload = {
         tipo_pedido: d.tipo,
         codigo_obra: parseInt(d.cod) || null,
+        numero_entrega:
+          editData?.numero_entrega || `LUC-${Math.floor(1000 + Math.random() * 9000).toString()}`,
         data_entrega: d.data ? format(d.data, 'yyyy-MM-dd') : null,
         numero_venda: d.venda
           .split(',')
