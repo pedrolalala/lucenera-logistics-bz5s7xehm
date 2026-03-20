@@ -17,6 +17,7 @@ import {
   User,
   Phone,
   FileText,
+  Circle,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -42,12 +43,18 @@ export function SeparacaoCard({
 
   const isSeparado = separacao.status === 'separado'
   const isSolicitado = separacao.status === 'material_solicitado'
+  const isGarantia = separacao.tipo_pedido === 'garantia' || separacao.inclui_garantia
 
-  const borderColor = isSeparado
-    ? 'border-l-[#10c98f]'
-    : isSolicitado
-      ? 'border-l-orange-400'
-      : 'border-l-blue-500'
+  let cardBorderClasses = 'border border-border border-l-[6px]'
+  if (isGarantia) {
+    cardBorderClasses = 'border-orange-300 border-l-orange-500'
+  } else if (isSeparado) {
+    cardBorderClasses = 'border-border border-l-[#10c98f]'
+  } else if (isSolicitado) {
+    cardBorderClasses = 'border-border border-l-purple-500'
+  } else {
+    cardBorderClasses = 'border-border border-l-blue-500'
+  }
 
   const complexityConfig = {
     facil: { label: 'FÁCIL', color: 'bg-green-100 text-green-700 border-green-200' },
@@ -65,8 +72,8 @@ export function SeparacaoCard({
   return (
     <div
       className={cn(
-        'bg-card shadow-sm rounded-lg transition-all border border-border border-l-[6px] mb-3',
-        borderColor,
+        'bg-card shadow-sm rounded-lg transition-all mb-3',
+        cardBorderClasses,
         isHighlighted ? 'ring-2 ring-primary' : 'hover:shadow-md',
       )}
     >
@@ -74,18 +81,18 @@ export function SeparacaoCard({
         {/* Left/Middle area */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-4 flex-1 w-full">
           {/* Status & Complexity */}
-          <div className="flex items-center gap-2 sm:w-[190px] shrink-0">
+          <div className="flex flex-wrap items-center gap-2 shrink-0 md:max-w-[320px]">
             {isSeparado ? (
               <div className="flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-semibold border border-[#10c98f] text-[#10c98f] bg-[#10c98f]/10">
                 <Check className="w-3.5 h-3.5" /> Separado
               </div>
             ) : isSolicitado ? (
-              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-semibold border border-orange-400 text-orange-600 bg-orange-50">
-                <Package className="w-3.5 h-3.5" /> Solicitado
+              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-semibold border border-purple-500 text-purple-600 bg-purple-50">
+                <Package className="w-3.5 h-3.5" /> Material Solicitado
               </div>
             ) : (
               <div className="flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-semibold border border-blue-500 text-blue-600 bg-blue-50">
-                <Box className="w-3.5 h-3.5" /> Separando
+                <RotateCcw className="w-3.5 h-3.5" /> Em Separação
               </div>
             )}
 
@@ -95,8 +102,14 @@ export function SeparacaoCard({
                 compData.color,
               )}
             >
-              <Zap className="w-3 h-3 fill-current" /> {compData.label}
+              {compData.label}
             </div>
+
+            {isGarantia && (
+              <div className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold border border-orange-500 text-orange-600 bg-orange-50">
+                <Circle className="w-2.5 h-2.5" /> Garantia
+              </div>
+            )}
           </div>
 
           {/* Title & Info */}
@@ -129,7 +142,7 @@ export function SeparacaoCard({
             {separacao.gestora_equipe}
           </span>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {isSeparado ? (
               <Button
                 variant="outline"
@@ -142,19 +155,29 @@ export function SeparacaoCard({
             ) : isSolicitado ? (
               <Button
                 size="sm"
-                className="h-8 bg-blue-500 hover:bg-blue-600 text-white"
+                className="h-8 bg-[#10c98f] hover:bg-[#10c98f]/90 text-white"
                 onClick={() => onStatusChange(separacao.id, 'em_separacao')}
               >
-                <Box className="w-3.5 h-3.5 mr-1.5" /> Iniciar
+                <RotateCcw className="w-3.5 h-3.5 mr-1.5" /> Iniciar Separação
               </Button>
             ) : (
-              <Button
-                size="sm"
-                className="h-8 bg-[#10c98f] hover:bg-[#10c98f]/90 text-white"
-                onClick={() => onStatusChange(separacao.id, 'separado')}
-              >
-                <Check className="w-3.5 h-3.5 mr-1.5" /> Finalizar
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-blue-600 border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+                  onClick={() => onStatusChange(separacao.id, 'material_solicitado')}
+                >
+                  <RotateCcw className="w-3.5 h-3.5 mr-1.5" /> Voltar
+                </Button>
+                <Button
+                  size="sm"
+                  className="h-8 bg-[#10c98f] hover:bg-[#10c98f]/90 text-white"
+                  onClick={() => onStatusChange(separacao.id, 'separado')}
+                >
+                  <Check className="w-3.5 h-3.5 mr-1.5" /> Separado
+                </Button>
+              </>
             )}
 
             <Button
