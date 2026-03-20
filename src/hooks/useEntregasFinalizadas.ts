@@ -35,9 +35,17 @@ export function useEntregasFinalizadas() {
     setIsLoading(true)
     setError(null)
     try {
+      // Ajuste na consulta para aproveitar a nova estrutura da chave estrangeira criada,
+      // garantindo que o join `separacoes` execute de forma contínua e previsível.
       const { data, error: err } = await supabase
         .from('entregas_finalizadas')
-        .select('*, separacoes(inclui_garantia, data_inicio_separacao)')
+        .select(`
+          *,
+          separacoes (
+            inclui_garantia,
+            data_inicio_separacao
+          )
+        `)
         .order('data_entrega_real', { ascending: false })
 
       if (err) throw err
