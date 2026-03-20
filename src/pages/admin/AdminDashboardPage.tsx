@@ -116,14 +116,15 @@ export default function AdminDashboardPage() {
   return (
     <AdminLayout>
       <div className="mb-8">
-        <h1 className="text-2xl md:text-3xl font-bold text-purple-700">Visão Geral</h1>
-        <p className="text-muted-foreground mt-1">Bem-vindo ao Painel Administrativo, {userName}</p>
-        <p className="text-sm text-muted-foreground">
-          {format(now, "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+        <h1 className="text-2xl md:text-3xl font-bold text-purple-700">Painel Administrativo</h1>
+        <p className="text-muted-foreground mt-1">Bem-vindo, {userName}</p>
+        <p className="text-sm text-muted-foreground mt-0.5 capitalize">
+          {format(now, "EEEE, dd 'de' MMMM 'de' yyyy - HH:mm", { locale: ptBR })}
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {/* Card Usuários */}
         <Card
           className="hover:shadow-md transition-shadow cursor-pointer border-t-4 border-t-purple-500"
           onClick={() => navigate('/admin/usuarios')}
@@ -131,10 +132,12 @@ export default function AdminDashboardPage() {
           <CardContent className="p-6">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-sm text-muted-foreground font-medium mb-2">Usuários Ativos</p>
+                <p className="text-sm text-muted-foreground font-medium mb-2">
+                  Usuários Cadastrados
+                </p>
                 <p className="text-4xl font-bold text-purple-700">{stats?.users ?? '-'}</p>
                 <p className="text-xs text-purple-600 mt-2 flex items-center gap-1 hover:underline">
-                  Gerenciar equipe <ArrowRight className="w-3 h-3" />
+                  Ver todos <ArrowRight className="w-3 h-3" />
                 </p>
               </div>
               <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
@@ -144,33 +147,37 @@ export default function AdminDashboardPage() {
           </CardContent>
         </Card>
 
+        {/* Card Pendentes */}
         <Card
-          className="hover:shadow-md transition-shadow cursor-pointer border-t-4 border-t-red-500"
+          className="hover:shadow-md transition-shadow cursor-pointer border-t-4 border-t-blue-500"
           onClick={() => navigate('/pendentes')}
         >
           <CardContent className="p-6">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-sm text-muted-foreground font-medium mb-2">Entregas Pendentes</p>
-                <p className="text-4xl font-bold text-red-600">{stats?.pendentes ?? '-'}</p>
-                <p className="text-xs text-red-600 mt-2 flex items-center gap-1 hover:underline">
-                  Ações requeridas <ArrowRight className="w-3 h-3" />
+                <p className="text-sm text-muted-foreground font-medium mb-2">
+                  Separações Pendentes
+                </p>
+                <p className="text-4xl font-bold text-blue-600">{stats?.pendentes ?? '-'}</p>
+                <p className="text-xs text-blue-600 mt-2 flex items-center gap-1 hover:underline">
+                  Ver separações <ArrowRight className="w-3 h-3" />
                 </p>
               </div>
-              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-                <AlertTriangle className="w-5 h-5 text-red-600" />
+              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                <Package className="w-5 h-5 text-blue-600" />
               </div>
             </div>
           </CardContent>
         </Card>
 
+        {/* Card Entregas do Mês */}
         <Card className="border-t-4 border-t-green-500">
           <CardContent className="p-6">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm text-muted-foreground font-medium mb-2">Entregas do Mês</p>
                 <p className="text-4xl font-bold text-green-600">{stats?.entregas ?? '-'}</p>
-                <p className="text-xs text-muted-foreground mt-2">
+                <p className="text-xs text-muted-foreground mt-2 capitalize">
                   {format(now, 'MMMM', { locale: ptBR })}
                 </p>
               </div>
@@ -181,7 +188,8 @@ export default function AdminDashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-t-4 border-t-gray-500">
+        {/* Card Status */}
+        <Card className="border-t-4 border-t-gray-400">
           <CardContent className="p-6">
             <div className="flex items-start justify-between">
               <div>
@@ -202,141 +210,84 @@ export default function AdminDashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <Card className="border-t-4 border-t-red-500 shadow-md">
-            <CardHeader className="border-b border-border bg-red-50/50 pb-4">
-              <div className="flex justify-between items-start sm:items-center flex-col sm:flex-row gap-3">
-                <div>
-                  <CardTitle className="flex items-center gap-2 text-lg text-red-700">
-                    <AlertTriangle className="w-5 h-5" />
-                    Painel de Pendências Logísticas
-                  </CardTitle>
-                  <CardDescription className="mt-1">
-                    Entregas com problemas que necessitam de intervenção administrativa imediata
-                  </CardDescription>
+          {/* Dashboard de Pendências Administrativas */}
+          {pendentesCriticas && pendentesCriticas.length > 0 && (
+            <Card className="border-t-4 border-t-red-500 shadow-md">
+              <CardHeader className="border-b border-border bg-red-50/50 pb-4">
+                <div className="flex justify-between items-start sm:items-center flex-col sm:flex-row gap-3">
+                  <div>
+                    <CardTitle className="flex items-center gap-2 text-lg text-red-700">
+                      <AlertTriangle className="w-5 h-5" />
+                      Análise de Entregas Pendentes
+                    </CardTitle>
+                    <CardDescription className="mt-1 text-red-900/70">
+                      Problemas operacionais recentes que precisam de atenção administrativa
+                    </CardDescription>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate('/pendentes')}
+                    className="text-red-700 border-red-200 hover:bg-red-50"
+                  >
+                    Analisar Todas
+                  </Button>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigate('/pendentes')}
-                  className="text-red-700 border-red-200 hover:bg-red-50"
-                >
-                  Ver Todas
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="divide-y divide-border">
-                {pendentesCriticas?.map((p) => (
-                  <div key={p.id} className="p-4 hover:bg-muted/30 transition-colors">
-                    <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="font-bold text-foreground">#{p.codigo_obra}</span>
-                          <span className="font-semibold text-foreground">{p.cliente}</span>
-                          <Badge
-                            variant="destructive"
-                            className="text-[10px] px-2 py-0.5 ml-2 uppercase"
-                          >
-                            {p.tipo_problema?.replace('_', ' ')}
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground mb-3 border-l-2 border-red-300 pl-3">
-                          {p.descricao_problema}
-                        </p>
-                        <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-                          {p.endereco && (
-                            <span className="flex items-center gap-1">
-                              <MapPin className="w-3.5 h-3.5" />
-                              <span className="truncate max-w-[250px]">{p.endereco}</span>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="divide-y divide-border">
+                  {pendentesCriticas.map((p) => (
+                    <div key={p.id} className="p-4 hover:bg-muted/30 transition-colors">
+                      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="font-bold text-foreground">#{p.codigo_obra}</span>
+                            <span className="font-semibold text-foreground">{p.cliente}</span>
+                            <Badge
+                              variant="destructive"
+                              className="text-[10px] px-2 py-0.5 ml-2 uppercase"
+                            >
+                              {p.tipo_problema?.replace('_', ' ')}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground mb-3 border-l-2 border-red-300 pl-3">
+                            {p.descricao_problema}
+                          </p>
+                          <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+                            {p.endereco && (
+                              <span className="flex items-center gap-1">
+                                <MapPin className="w-3.5 h-3.5" />
+                                <span className="truncate max-w-[250px]">{p.endereco}</span>
+                              </span>
+                            )}
+                            <span className="flex items-center gap-1 font-medium text-red-600">
+                              <Clock className="w-3.5 h-3.5" />
+                              Registrado{' '}
+                              {p.created_at
+                                ? format(new Date(p.created_at), "dd/MM 'às' HH:mm")
+                                : ''}
                             </span>
-                          )}
-                          <span className="flex items-center gap-1 font-medium text-red-600">
-                            <Clock className="w-3.5 h-3.5" />
-                            Registrado em{' '}
-                            {p.created_at ? format(new Date(p.created_at), "dd/MM 'às' HH:mm") : ''}
-                          </span>
+                          </div>
                         </div>
+                        <Button
+                          size="sm"
+                          className="shrink-0 bg-red-600 hover:bg-red-700 text-white"
+                          onClick={() => navigate('/pendentes')}
+                        >
+                          <Eye className="w-4 h-4 mr-2" />
+                          Detalhes
+                        </Button>
                       </div>
-                      <Button
-                        size="sm"
-                        className="shrink-0 bg-red-600 hover:bg-red-700 text-white"
-                        onClick={() => navigate('/pendentes')}
-                      >
-                        <Eye className="w-4 h-4 mr-2" />
-                        Analisar
-                      </Button>
                     </div>
-                  </div>
-                ))}
-                {pendentesCriticas?.length === 0 && (
-                  <div className="p-10 text-center text-muted-foreground flex flex-col items-center">
-                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                      <CheckCircle2 className="w-8 h-8 text-green-500" />
-                    </div>
-                    <p className="text-lg font-medium text-foreground">
-                      Nenhuma pendência crítica!
-                    </p>
-                    <p className="text-sm mt-1">
-                      O fluxo operacional está ocorrendo sem bloqueios.
-                    </p>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
-        <div className="space-y-6">
-          <Card className="bg-muted/20">
-            <CardHeader>
-              <CardTitle className="text-lg">Acesso Rápido</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-3">
-                <Button
-                  onClick={() => navigate('/admin/usuarios')}
-                  className="h-24 flex flex-col gap-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl shadow-sm"
-                >
-                  <Users className="w-6 h-6" />
-                  <span className="text-xs font-semibold whitespace-normal text-center leading-tight">
-                    Gerenciar Equipe
-                  </span>
-                </Button>
-                <Button
-                  onClick={() => navigate('/separacao')}
-                  className="h-24 flex flex-col gap-2 bg-green-600 hover:bg-green-700 text-white rounded-xl shadow-sm"
-                >
-                  <Package className="w-6 h-6" />
-                  <span className="text-xs font-semibold whitespace-normal text-center leading-tight">
-                    Painel Operacional
-                  </span>
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => navigate('/calendario')}
-                  className="h-24 flex flex-col gap-2 bg-card hover:bg-muted border-2 rounded-xl"
-                >
-                  <CalendarDays className="w-6 h-6 text-muted-foreground" />
-                  <span className="text-xs font-semibold whitespace-normal text-center leading-tight text-foreground">
-                    Ver Calendário
-                  </span>
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => navigate('/admin/configuracoes')}
-                  className="h-24 flex flex-col gap-2 bg-card hover:bg-muted border-2 rounded-xl"
-                >
-                  <Settings className="w-6 h-6 text-muted-foreground" />
-                  <span className="text-xs font-semibold whitespace-normal text-center leading-tight text-foreground">
-                    Configurações
-                  </span>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
+          {/* Atividades Recentes */}
           <Card>
-            <CardHeader className="border-b border-border bg-muted/30 pb-4">
+            <CardHeader className="border-b border-border pb-4">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Clock className="w-5 h-5 text-muted-foreground" />
                 Atividades Recentes
@@ -367,6 +318,57 @@ export default function AdminDashboardPage() {
                     Nenhuma atividade recente.
                   </div>
                 )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Menu Lateral - Acesso Rápido */}
+        <div className="space-y-6">
+          <Card className="border-0 shadow-none bg-transparent">
+            <CardHeader className="px-0 pt-0">
+              <CardTitle className="text-xl font-bold">Acesso Rápido</CardTitle>
+            </CardHeader>
+            <CardContent className="px-0">
+              <div className="grid grid-cols-2 gap-4">
+                <Button
+                  onClick={() => navigate('/admin/usuarios')}
+                  className="h-28 flex flex-col justify-center items-center gap-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl shadow-md transition-transform hover:scale-105"
+                >
+                  <Users className="w-7 h-7" />
+                  <span className="text-sm font-semibold whitespace-normal text-center leading-tight">
+                    Adicionar Usuário
+                  </span>
+                </Button>
+                <Button
+                  onClick={() => navigate('/separacao')}
+                  className="h-28 flex flex-col justify-center items-center gap-3 bg-green-600 hover:bg-green-700 text-white rounded-xl shadow-md transition-transform hover:scale-105"
+                >
+                  <Package className="w-7 h-7" />
+                  <span className="text-sm font-semibold whitespace-normal text-center leading-tight">
+                    Nova Separação
+                  </span>
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => navigate('/calendario')}
+                  className="h-28 flex flex-col justify-center items-center gap-3 bg-card hover:bg-muted border border-border rounded-xl transition-transform hover:scale-105 shadow-sm"
+                >
+                  <CalendarDays className="w-7 h-7 text-muted-foreground" />
+                  <span className="text-sm font-semibold whitespace-normal text-center leading-tight text-foreground">
+                    Ver Calendário
+                  </span>
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => navigate('/admin/configuracoes')}
+                  className="h-28 flex flex-col justify-center items-center gap-3 bg-card hover:bg-muted border border-border rounded-xl transition-transform hover:scale-105 shadow-sm"
+                >
+                  <Settings className="w-7 h-7 text-muted-foreground" />
+                  <span className="text-sm font-semibold whitespace-normal text-center leading-tight text-foreground">
+                    Configurações
+                  </span>
+                </Button>
               </div>
             </CardContent>
           </Card>

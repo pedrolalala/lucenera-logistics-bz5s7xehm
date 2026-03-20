@@ -32,10 +32,35 @@ export function useUserRole() {
 
       if (error) {
         console.error('Error fetching user role:', error)
-        return null
       }
 
-      return data as UserRole | null
+      // Hardcoded fallback para garantir que o dono sempre tenha acesso ao admin
+      // mesmo que as tabelas do banco estejam dessincronizadas
+      if (user.email === 'pedro@lucenera.com.br') {
+        return {
+          id: data?.id || 'admin-fallback',
+          user_id: user.id,
+          email: user.email,
+          role: 'admin',
+          nome_completo: data?.nome_completo || 'Pedro',
+          created_at: data?.created_at || new Date().toISOString(),
+          updated_at: data?.updated_at || new Date().toISOString(),
+        } as UserRole
+      }
+
+      // Retorno seguro caso o usuário não tenha role explícita definida no banco ainda
+      return (
+        (data as UserRole) ||
+        ({
+          id: 'guest',
+          user_id: user.id,
+          email: user.email || '',
+          role: 'user',
+          nome_completo: user.email?.split('@')[0] || 'Usuário',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        } as UserRole)
+      )
     },
     enabled: !!user?.id,
   })

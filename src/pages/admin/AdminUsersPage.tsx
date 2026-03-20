@@ -103,17 +103,17 @@ export default function AdminUsersPage() {
     <AdminLayout>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-purple-700">Painel de Usuários</h1>
+          <h1 className="text-2xl font-bold text-purple-700">Gestão de Equipe</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Gestão centralizada de contas e níveis de acesso da plataforma
+            Controle os perfis e permissões dos membros da plataforma
           </p>
         </div>
         <Button
           onClick={handleAddUser}
-          className="bg-purple-600 hover:bg-purple-700 shadow-md h-10 px-6"
+          className="bg-purple-600 hover:bg-purple-700 text-white shadow-md h-10 px-6"
         >
           <Plus className="w-4 h-4 mr-2" />
-          Novo Usuário
+          Adicionar Usuário
         </Button>
       </div>
 
@@ -155,7 +155,7 @@ export default function AdminUsersPage() {
                     <TableCell colSpan={5} className="text-center py-12">
                       <div className="flex flex-col items-center justify-center text-muted-foreground">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mb-4"></div>
-                        <p>Carregando usuários...</p>
+                        <p>Carregando equipe...</p>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -173,7 +173,7 @@ export default function AdminUsersPage() {
                     <TableRow key={u.id} className="hover:bg-muted/30 transition-colors">
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-sm shrink-0 uppercase border border-purple-200">
+                          <div className="w-10 h-10 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-sm shrink-0 uppercase border border-purple-200 shadow-sm">
                             {(u.nome_completo || u.email || '?')[0]}
                           </div>
                           <div className="flex flex-col">
@@ -181,7 +181,6 @@ export default function AdminUsersPage() {
                               {u.nome_completo || 'Usuário Sem Nome'}
                             </span>
                             <span className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                              <Shield className="w-3 h-3" />
                               ID: {u.id?.slice(0, 8)}...
                             </span>
                           </div>
@@ -217,16 +216,16 @@ export default function AdminUsersPage() {
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1.5">
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
-                            className="h-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50 border border-transparent hover:border-blue-200"
+                            className="h-8 border-purple-200 text-purple-700 hover:bg-purple-50"
                             onClick={() => {
                               setSelectedUser(u)
                               setIsEditUserModalOpen(true)
                             }}
                           >
-                            <Pencil className="w-4 h-4 mr-1.5" />
-                            Editar
+                            <Pencil className="w-3.5 h-3.5 mr-1.5" />
+                            Editar Acesso
                           </Button>
                           <Button
                             variant="ghost"
