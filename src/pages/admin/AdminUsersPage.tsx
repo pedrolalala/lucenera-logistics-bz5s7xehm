@@ -1,14 +1,14 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase/client'
 import { AdminLayout } from '@/components/admin/AdminLayout'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Pencil, Key, Trash2, Search, Shield, Truck, User } from 'lucide-react'
-import { ResetPasswordModal } from '@/components/admin/ResetPasswordModal'
+import { Plus, Pencil, Trash2, Search, Shield, Truck, User, Mail, Calendar } from 'lucide-react'
 import { EditUserModal } from '@/components/admin/EditUserModal'
+import { toast } from 'sonner'
 import {
   Table,
   TableBody,
@@ -17,12 +17,14 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { format, parseISO } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 
 export default function AdminUsersPage() {
-  const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false)
   const [isEditUserModalOpen, setIsEditUserModalOpen] = useState(false)
   const [selectedUser, setSelectedUser] = useState<any>(null)
   const [search, setSearch] = useState('')
+  const queryClient = useQueryClient()
 
   const { data: users, isLoading } = useQuery({
     queryKey: ['admin-users'],
@@ -33,6 +35,20 @@ export default function AdminUsersPage() {
         .order('created_at', { ascending: false })
       if (error) throw error
       return data || []
+    },
+  })
+
+  const deleteUserMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('user_roles').delete().eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      toast.success('Acesso de usuário removido com sucesso!')
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] })
+    },
+    onError: (err: any) => {
+      toast.error('Erro ao remover usuário: ' + err.message)
     },
   })
 
@@ -64,117 +80,162 @@ export default function AdminUsersPage() {
     }
   }
 
+  const handleAddUser = () => {
+    toast.info(
+      'Para adicionar novos usuários, eles devem se registrar na tela de login primeiro. Depois você poderá alterar o nível de acesso deles aqui.',
+      {
+        duration: 6000,
+      },
+    )
+  }
+
+  const handleDelete = (id: string, name: string) => {
+    if (
+      confirm(
+        `Tem certeza que deseja excluir o acesso de ${name}? Esta ação não afeta o login base no banco de dados, apenas remove o perfil do painel.`,
+      )
+    ) {
+      deleteUserMutation.mutate(id)
+    }
+  }
+
   return (
     <AdminLayout>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-purple-700">Gerenciamento de Usuários</h1>
+          <h1 className="text-2xl font-bold text-purple-700">Painel de Usuários</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Gerencie os acessos e permissões da equipe
+            Gestão centralizada de contas e níveis de acesso da plataforma
           </p>
         </div>
-        <Button className="bg-purple-600 hover:bg-purple-700 shadow-md">
+        <Button
+          onClick={handleAddUser}
+          className="bg-purple-600 hover:bg-purple-700 shadow-md h-10 px-6"
+        >
           <Plus className="w-4 h-4 mr-2" />
-          Adicionar Usuário
+          Novo Usuário
         </Button>
       </div>
 
-      <Card className="border-t-4 border-t-purple-500 shadow-sm">
+      <Card className="border-t-4 border-t-purple-500 shadow-sm overflow-hidden">
         <div className="p-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-muted/20">
-          <div className="relative max-w-sm w-full">
+          <div className="relative max-w-md w-full">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Buscar por nome ou email..."
+              placeholder="Buscar por nome ou email do usuário..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 bg-background"
+              className="pl-9 bg-background border-border h-10"
             />
           </div>
-          <Badge
-            variant="secondary"
-            className="px-3 py-1 text-sm font-medium bg-purple-100 text-purple-700 w-fit"
-          >
-            Total: {users?.length || 0}
-          </Badge>
+          <div className="flex items-center gap-3">
+            <Badge
+              variant="secondary"
+              className="px-4 py-1.5 text-sm font-medium bg-purple-100 text-purple-700 whitespace-nowrap"
+            >
+              Total de Cadastros: {users?.length || 0}
+            </Badge>
+          </div>
         </div>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table>
-              <TableHeader className="bg-muted/50">
-                <TableRow>
-                  <TableHead className="w-[300px]">Usuário</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Nível de Acesso</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
+              <TableHeader className="bg-muted/40">
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="w-[300px] font-semibold text-foreground">Usuário</TableHead>
+                  <TableHead className="font-semibold text-foreground">Email</TableHead>
+                  <TableHead className="font-semibold text-foreground">Nível de Acesso</TableHead>
+                  <TableHead className="font-semibold text-foreground">Data de Cadastro</TableHead>
+                  <TableHead className="text-right font-semibold text-foreground">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
-                      Carregando usuários...
+                    <TableCell colSpan={5} className="text-center py-12">
+                      <div className="flex flex-col items-center justify-center text-muted-foreground">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mb-4"></div>
+                        <p>Carregando usuários...</p>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ) : filteredUsers?.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
-                      Nenhum usuário encontrado.
+                    <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
+                      <div className="flex flex-col items-center justify-center">
+                        <Users className="w-12 h-12 text-muted-foreground/30 mb-3" />
+                        <p>Nenhum usuário encontrado com "{search}".</p>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredUsers?.map((u) => (
-                    <TableRow key={u.id}>
+                    <TableRow key={u.id} className="hover:bg-muted/30 transition-colors">
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-xs shrink-0 uppercase">
+                          <div className="w-10 h-10 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-sm shrink-0 uppercase border border-purple-200">
                             {(u.nome_completo || u.email || '?')[0]}
                           </div>
-                          <span className="truncate max-w-[200px]">
-                            {u.nome_completo || 'Sem nome'}
-                          </span>
+                          <div className="flex flex-col">
+                            <span className="truncate max-w-[200px] font-semibold text-foreground">
+                              {u.nome_completo || 'Usuário Sem Nome'}
+                            </span>
+                            <span className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                              <Shield className="w-3 h-3" />
+                              ID: {u.id?.slice(0, 8)}...
+                            </span>
+                          </div>
                         </div>
                       </TableCell>
-                      <TableCell className="text-muted-foreground">{u.email}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <Mail className="w-4 h-4 shrink-0" />
+                          <span className="truncate">{u.email}</span>
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <Badge
                           variant="outline"
-                          className={`capitalize ${getRoleColor(u.role || 'user')}`}
+                          className={`capitalize px-2.5 py-1 ${getRoleColor(u.role || 'user')}`}
                         >
                           {getRoleIcon(u.role || 'user')}
-                          {u.role || 'user'}
+                          {u.role === 'admin'
+                            ? 'Administrador'
+                            : u.role === 'entregador'
+                              ? 'Entregador'
+                              : 'Usuário Padrão'}
                         </Badge>
                       </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                          <Calendar className="w-4 h-4 shrink-0" />
+                          {u.created_at
+                            ? format(parseISO(u.created_at), 'dd/MM/yyyy', { locale: ptBR })
+                            : 'N/A'}
+                        </div>
+                      </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
+                        <div className="flex items-center justify-end gap-1.5">
                           <Button
                             variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                            size="sm"
+                            className="h-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50 border border-transparent hover:border-blue-200"
                             onClick={() => {
                               setSelectedUser(u)
                               setIsEditUserModalOpen(true)
                             }}
-                            title="Editar"
                           >
-                            <Pencil className="w-4 h-4" />
+                            <Pencil className="w-4 h-4 mr-1.5" />
+                            Editar
                           </Button>
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
-                            onClick={() => {
-                              setSelectedUser(u)
-                              setIsResetPasswordModalOpen(true)
-                            }}
-                            title="Redefinir Senha"
-                          >
-                            <Key className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                            title="Excluir"
+                            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10 border border-transparent hover:border-destructive/20"
+                            title="Remover Acesso"
+                            onClick={() =>
+                              handleDelete(u.id, u.nome_completo || u.email || 'Usuário')
+                            }
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
@@ -188,12 +249,6 @@ export default function AdminUsersPage() {
           </div>
         </CardContent>
       </Card>
-
-      <ResetPasswordModal
-        isOpen={isResetPasswordModalOpen}
-        onClose={() => setIsResetPasswordModalOpen(false)}
-        user={selectedUser}
-      />
 
       {isEditUserModalOpen && selectedUser && (
         <EditUserModal
