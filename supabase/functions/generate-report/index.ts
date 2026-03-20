@@ -6,11 +6,7 @@ import { corsHeaders } from '../_shared/cors.ts'
 function toCSV(data: any[]) {
   if (!data || !data.length) return 'Nenhum dado encontrado'
   const headers = Object.keys(data[0]).join(',')
-  const rows = data.map((r) =>
-    Object.values(r)
-      .map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`)
-      .join(','),
-  )
+  const rows = data.map(r => Object.values(r).map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','))
   return [headers, ...rows].join('\n')
 }
 
@@ -20,7 +16,7 @@ async function toPDF(data: any[], title: string) {
   let page = pdfDoc.addPage()
   const { height } = page.getSize()
   let y = height - 50
-
+  
   page.drawText(`Relatorio: ${title.toUpperCase()}`, { x: 40, y, size: 16, font })
   y -= 30
 
@@ -38,9 +34,7 @@ async function toPDF(data: any[], title: string) {
       page = pdfDoc.addPage()
       y = height - 50
     }
-    const line = Object.values(row)
-      .map((v) => String(v ?? '').substring(0, 25))
-      .join(' | ')
+    const line = Object.values(row).map(v => String(v ?? '').substring(0, 25)).join(' | ')
     page.drawText(line, { x: 40, y, size: 9, font })
     y -= 15
   }
@@ -58,20 +52,12 @@ Deno.serve(async (req: Request) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
     const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
-    const supabase = createClient(supabaseUrl, supabaseKey, {
-      global: { headers: { Authorization: authHeader } },
-    })
+    const supabase = createClient(supabaseUrl, supabaseKey, { global: { headers: { Authorization: authHeader } } })
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser()
     if (!user) throw new Error('Usuário não autenticado.')
 
-    const { data: profile } = await supabase
-      .from('usuarios')
-      .select('role')
-      .eq('id', user.id)
-      .single()
+    const { data: profile } = await supabase.from('usuarios').select('role').eq('id', user.id).single()
     if (profile?.role !== 'admin' && profile?.role !== 'gerente') {
       throw new Error('Acesso negado. Apenas administradores e gerentes podem gerar relatórios.')
     }
@@ -80,14 +66,12 @@ Deno.serve(async (req: Request) => {
     let flatData: any[] = []
 
     if (reportType === 'ferias') {
-      query = supabase
-        .from('ferias')
-        .select('*, funcionarios_rh!inner(nome, departamento_id, departamentos_rh(nome))')
+      query = supabase.from('ferias').select('*, funcionarios_rh!inner(nome, departamento_id, departamentos_rh(nome))')
       if (filters.deptId) query = query.eq('funcionarios_rh.departamento_id', filters.deptId)
       if (filters.empId) query = query.eq('funcionario_id', filters.empId)
       if (filters.startDate) query = query.gte('data_inicio', filters.startDate.split('T')[0])
       if (filters.endDate) query = query.lte('data_fim', filters.endDate.split('T')[0])
-
+      
       const { data } = await query
       flatData = (data || []).map((d: any) => ({
         Funcionario: d.funcionarios_rh?.nome,
@@ -95,17 +79,15 @@ Deno.serve(async (req: Request) => {
         Inicio: d.data_inicio,
         Fim: d.data_fim,
         Dias: d.dias,
-        Status: d.status,
+        Status: d.status
       }))
     } else if (reportType === 'folha') {
-      query = supabase
-        .from('folha_pagamento')
-        .select('*, funcionarios_rh!inner(nome, departamento_id, departamentos_rh(nome))')
+      query = supabase.from('folha_pagamento').select('*, funcionarios_rh!inner(nome, departamento_id, departamentos_rh(nome))')
       if (filters.deptId) query = query.eq('funcionarios_rh.departamento_id', filters.deptId)
       if (filters.empId) query = query.eq('funcionario_id', filters.empId)
       if (filters.month) query = query.eq('mes', filters.month)
       if (filters.year) query = query.eq('ano', filters.year)
-
+      
       const { data } = await query
       flatData = (data || []).map((d: any) => ({
         Funcionario: d.funcionarios_rh?.nome,
@@ -113,17 +95,15 @@ Deno.serve(async (req: Request) => {
         Mes: d.mes,
         Ano: d.ano,
         Base: d.salario_base,
-        Liquido: d.salario_liquido,
+        Liquido: d.salario_liquido
       }))
     } else if (reportType === 'avaliacoes') {
-      query = supabase
-        .from('avaliacoes')
-        .select('*, funcionarios_rh!inner(nome, departamento_id, departamentos_rh(nome))')
+      query = supabase.from('avaliacoes').select('*, funcionarios_rh!inner(nome, departamento_id, departamentos_rh(nome))')
       if (filters.deptId) query = query.eq('funcionarios_rh.departamento_id', filters.deptId)
       if (filters.empId) query = query.eq('funcionario_id', filters.empId)
       if (filters.startDate) query = query.gte('data_avaliacao', filters.startDate)
       if (filters.endDate) query = query.lte('data_avaliacao', filters.endDate)
-
+      
       const { data } = await query
       flatData = (data || []).map((d: any) => ({
         Funcionario: d.funcionarios_rh?.nome,
@@ -132,12 +112,10 @@ Deno.serve(async (req: Request) => {
         Produtiv: d.produtividade,
         Qualidad: d.qualidade,
         Pontual: d.pontualidade,
-        Equipe: d.trabalho_equipe,
+        Equipe: d.trabalho_equipe
       }))
     } else if (reportType === 'ponto') {
-      query = supabase
-        .from('controle_ponto')
-        .select('*, funcionarios_rh!inner(nome, departamento_id, departamentos_rh(nome))')
+      query = supabase.from('controle_ponto').select('*, funcionarios_rh!inner(nome, departamento_id, departamentos_rh(nome))')
       if (filters.deptId) query = query.eq('funcionarios_rh.departamento_id', filters.deptId)
       if (filters.empId) query = query.eq('funcionario_id', filters.empId)
       if (filters.month && filters.year) {
@@ -145,7 +123,7 @@ Deno.serve(async (req: Request) => {
         const end = new Date(filters.year, filters.month, 0).toISOString().split('T')[0]
         query = query.gte('data', start).lte('data', end)
       }
-
+      
       const { data } = await query
       flatData = (data || []).map((d: any) => ({
         Funcionario: d.funcionarios_rh?.nome,
@@ -154,7 +132,7 @@ Deno.serve(async (req: Request) => {
         Entrada: d.hora_entrada || '-',
         Saida: d.hora_saida || '-',
         Horas: d.total_horas || 0,
-        Status: d.status,
+        Status: d.status
       }))
     }
 
@@ -163,14 +141,9 @@ Deno.serve(async (req: Request) => {
       return new Response(csvStr, { headers: { ...corsHeaders, 'Content-Type': 'text/csv' } })
     } else {
       const pdfBytes = await toPDF(flatData, reportType)
-      return new Response(pdfBytes, {
-        headers: { ...corsHeaders, 'Content-Type': 'application/pdf' },
-      })
+      return new Response(pdfBytes, { headers: { ...corsHeaders, 'Content-Type': 'application/pdf' } })
     }
   } catch (error: any) {
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
+    return new Response(JSON.stringify({ error: error.message }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
   }
 })
