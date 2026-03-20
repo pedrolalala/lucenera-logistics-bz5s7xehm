@@ -140,9 +140,11 @@ function PendenciaCard({
           <div className="flex items-center gap-2">
             <Calendar className="w-4 h-4 text-muted-foreground" />
             <span className="text-muted-foreground">
-              {format(parseISO(pendencia.data_registro!), "dd/MM/yyyy 'às' HH:mm", {
-                locale: ptBR,
-              })}
+              {pendencia.data_registro
+                ? format(parseISO(pendencia.data_registro), "dd/MM/yyyy 'às' HH:mm", {
+                    locale: ptBR,
+                  })
+                : 'N/A'}
             </span>
           </div>
         </div>
@@ -193,7 +195,11 @@ export default function PendentesPage() {
     if (!searchQuery.trim()) return list
     const query = searchQuery.toLowerCase()
     return list.filter(
-      (p) => p.cliente.toLowerCase().includes(query) || p.codigo_obra.toLowerCase().includes(query),
+      (p) =>
+        (p.cliente || '').toLowerCase().includes(query) ||
+        String(p.codigo_obra || '')
+          .toLowerCase()
+          .includes(query),
     )
   }
 

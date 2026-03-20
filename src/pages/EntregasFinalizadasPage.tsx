@@ -41,7 +41,7 @@ export default function EntregasFinalizadasPage() {
 
     return entregas
       .filter((e) => {
-        if (startDate) {
+        if (startDate && e.data_entrega_real) {
           const entregaDate = startOfDay(parseISO(e.data_entrega_real))
           if (
             !isAfter(entregaDate, startDate) &&
@@ -49,18 +49,25 @@ export default function EntregasFinalizadasPage() {
           ) {
             return false
           }
+        } else if (startDate && !e.data_entrega_real) {
+          return false
         }
         if (searchQuery.trim()) {
           const query = searchQuery.toLowerCase()
           return (
-            e.cliente.toLowerCase().includes(query) || e.codigo_obra.toLowerCase().includes(query)
+            (e.cliente || '').toLowerCase().includes(query) ||
+            String(e.codigo_obra || '')
+              .toLowerCase()
+              .includes(query)
           )
         }
         return true
       })
-      .sort(
-        (a, b) => new Date(b.data_entrega_real).getTime() - new Date(a.data_entrega_real).getTime(),
-      )
+      .sort((a, b) => {
+        const dateA = a.data_entrega_real ? new Date(a.data_entrega_real).getTime() : 0
+        const dateB = b.data_entrega_real ? new Date(b.data_entrega_real).getTime() : 0
+        return dateB - dateA
+      })
   }, [entregas, filtro, searchQuery])
 
   return (
