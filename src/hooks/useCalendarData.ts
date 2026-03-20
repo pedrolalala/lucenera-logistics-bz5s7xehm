@@ -32,6 +32,7 @@ export function useCalendarData(year: number, month: number) {
         .select('*')
         .gte('data_entrega', format(start, 'yyyy-MM-dd'))
         .lte('data_entrega', format(end, 'yyyy-MM-dd'))
+        .in('status', ['material_solicitado', 'em_separacao', 'separado'])
 
       if (error) throw error
 
