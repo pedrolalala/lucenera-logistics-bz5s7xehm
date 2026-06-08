@@ -8,6 +8,8 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { AdminRoute } from '@/components/auth/AdminRoute'
 import { EntregadorRoute } from '@/components/auth/EntregadorRoute'
 import LoginPage from './pages/LoginPage'
+import ForgotPasswordPage from './pages/ForgotPasswordPage'
+import ResetPasswordPage from './pages/ResetPasswordPage'
 import SeparacaoPage from './pages/SeparacaoPage'
 import CalendarioPage from './pages/CalendarioPage'
 import RegistrarEntregaPage from './pages/RegistrarEntregaPage'
@@ -34,6 +36,8 @@ const App = () => (
           <Routes>
             {/* Public route */}
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
 
             {/* Protected routes */}
             <Route
