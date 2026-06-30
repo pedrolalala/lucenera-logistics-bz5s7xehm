@@ -24,10 +24,6 @@ import { useCalendarData, MonthData, DayData } from '@/hooks/useCalendarData'
 import { Separacao } from '@/hooks/useSeparacoes'
 import { StatusSeparacao } from '@/types/separacao'
 
-import { useCalendarData, MonthData, DayData } from '@/hooks/useCalendarData'
-import { Separacao } from '@/hooks/useSeparacoes'
-import { StatusSeparacao } from '@/types/separacao'
-
 export default function CalendarioPage() {
 =======
 import { useCalendarData, MonthData, DayData } from '@/hooks/useCalendarData'
