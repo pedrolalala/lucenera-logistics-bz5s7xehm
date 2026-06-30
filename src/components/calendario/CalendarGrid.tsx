@@ -48,7 +48,7 @@ function getGroupStyle(complexity: string, status: string) {
   }
 
   if (status === 'separado' || status === 'finalizado') return colorClasses.solid
-  if (status === 'em_separacao') return colorClasses.light
+  if (status === 'Em separação') return colorClasses.light
   return colorClasses.outline
 }
 

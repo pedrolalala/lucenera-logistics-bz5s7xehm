@@ -22,18 +22,6 @@ import { SeparacaoFormModal } from '@/components/separacao/SeparacaoFormModal'
 import { CreateRouteModal } from '@/components/separacao/CreateRouteModal'
 import { useCalendarData, MonthData, DayData } from '@/hooks/useCalendarData'
 import { Separacao } from '@/hooks/useSeparacoes'
-import { useCalendarData, MonthData, DayData } from '@/hooks/useCalendarData'
-import { Separacao } from '@/hooks/useSeparacoes'
-import { StatusSeparacao } from '@/types/separacao'
-
-export default function CalendarioPage() {
-=======
-import { StatusSeparacao } from '@/types/separacao'
-
-export default function CalendarioPage() {
-=======
-import { useCalendarData, MonthData, DayData } from '@/hooks/useCalendarData'
-import { Separacao } from '@/hooks/useSeparacoes'
 import { StatusSeparacao } from '@/types/separacao'
 
 export default function CalendarioPage() {
