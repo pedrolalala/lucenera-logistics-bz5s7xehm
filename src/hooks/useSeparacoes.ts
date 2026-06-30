@@ -40,6 +40,32 @@ export interface Separacao {
   garantia_motivo?: string | null
 }
 
+const DB_STATUS_MAP: Record<string, string> = {
+  material_solicitado: 'material_solicitado',
+  em_separacao: 'Em separação',
+  separado: 'separado',
+  finalizado: 'finalizado',
+  pendente: 'Pendente',
+  matheus_separacao_garantia: 'matheus_separacao_garantia',
+}
+
+const FE_STATUS_MAP: Record<string, string> = {
+  'Em separação': 'em_separacao',
+  Pendente: 'pendente',
+  material_solicitado: 'material_solicitado',
+  separado: 'separado',
+  finalizado: 'finalizado',
+  matheus_separacao_garantia: 'matheus_separacao_garantia',
+}
+
+function toDbStatus(feStatus: string): string {
+  return DB_STATUS_MAP[feStatus] ?? feStatus
+}
+
+function toFeStatus(dbStatus: string): string {
+  return FE_STATUS_MAP[dbStatus] ?? dbStatus
+}
+
 export function useSeparacoes() {
   const [separacoes, setSeparacoes] = useState<Separacao[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -51,15 +77,22 @@ export function useSeparacoes() {
       setIsLoading(true)
       setError(null)
 
+      const dbStatuses = ['material_solicitado', 'Em separação', 'separado'].map(toDbStatus)
+
       const { data, error: fetchError } = await supabase
         .from('separacoes')
         .select('*')
-        .in('status', ['material_solicitado', 'em_separacao', 'separado'])
+        .in('status', dbStatuses)
         .order('data_entrega', { ascending: true })
 
       if (fetchError) throw fetchError
 
-      setSeparacoes((data || []) as Separacao[])
+      const normalized = (data || []).map((row: Record<string, unknown>) => ({
+        ...row,
+        status: toFeStatus(row.status as string),
+      })) as Separacao[]
+
+      setSeparacoes(normalized)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erro ao carregar separações'
       setError(message)
@@ -73,7 +106,7 @@ export function useSeparacoes() {
     setSeparacoes((prev) => prev.map((s) => (s.id === id ? { ...s, status: newStatus } : s)))
 
     try {
-      const updatePayload: Record<string, unknown> = { status: newStatus }
+      const updatePayload: Record<string, unknown> = { status: toDbStatus(newStatus) }
       if (newStatus === 'em_separacao') {
         updatePayload.data_inicio_separacao = new Date().toISOString()
       }
@@ -147,7 +180,7 @@ export function useSeparacoes() {
 
       const { error: updateError } = await supabase
         .from('separacoes')
-        .update({ status: 'finalizado' })
+        .update({ status: toDbStatus('finalizado') })
         .eq('id', id)
 
       if (updateError) throw updateError
@@ -176,8 +209,9 @@ export function useSeparacoes() {
         .maybeSingle()
 
       if (error) throw error
-      return (data as Separacao) || null
-    } catch (err) {
+      if (!data) return null
+      return { ...data, status: toFeStatus(data.status as string) } as Separacao
+    } catch {
       return null
     }
   }
