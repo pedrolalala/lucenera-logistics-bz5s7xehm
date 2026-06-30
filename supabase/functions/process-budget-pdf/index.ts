@@ -16,8 +16,29 @@ Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
   try {
-    const { quote_id } = await req.json()
-    if (!quote_id) throw new Error('quote_id is required')
+    let body
+    try {
+      body = await req.json()
+    } catch (e) {
+      return new Response(
+        JSON.stringify({ error: 'Formato de requisição inválido. Esperado JSON.' }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        },
+      )
+    }
+
+    const { quote_id } = body
+    if (!quote_id) {
+      return new Response(
+        JSON.stringify({ error: 'O ID do orçamento (quote_id) é obrigatório.' }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        },
+      )
+    }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -35,7 +56,15 @@ Deno.serve(async (req: Request) => {
       .eq('id', quote_id)
       .single()
 
-    if (budgetError || !budget) throw new Error('Budget not found')
+    if (budgetError || !budget) {
+      return new Response(
+        JSON.stringify({ error: 'Orçamento não encontrado no banco de dados.' }),
+        {
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        },
+      )
+    }
 
     // Generate PDF
     const pdfDoc = await PDFDocument.create()

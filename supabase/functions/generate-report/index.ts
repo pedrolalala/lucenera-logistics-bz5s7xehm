@@ -60,7 +60,12 @@ Deno.serve(async (req: Request) => {
   try {
     const { reportType, format, filters } = await req.json()
     const authHeader = req.headers.get('Authorization')
-    if (!authHeader) throw new Error('Acesso não autorizado.')
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Acesso não autorizado.' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
     const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
@@ -71,7 +76,12 @@ Deno.serve(async (req: Request) => {
     const {
       data: { user },
     } = await supabase.auth.getUser()
-    if (!user) throw new Error('Usuário não autenticado.')
+    if (!user) {
+      return new Response(JSON.stringify({ error: 'Usuário não autenticado.' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
 
     const { data: profile } = await supabase
       .from('usuarios')
@@ -80,28 +90,48 @@ Deno.serve(async (req: Request) => {
       .single()
 
     if (reportType !== 'orcamento' && profile?.role !== 'admin' && profile?.role !== 'gerente') {
-      throw new Error('Acesso negado. Apenas administradores e gerentes podem gerar relatórios.')
+      return new Response(
+        JSON.stringify({
+          error: 'Acesso negado. Apenas administradores e gerentes podem gerar relatórios.',
+        }),
+        {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        },
+      )
     }
 
     if (reportType === 'orcamento') {
       const { id, logoBase64 } = filters || {}
 
-      if (!id) throw new Error('ID do orçamento não fornecido.')
+      if (!id) {
+        return new Response(JSON.stringify({ error: 'ID do orçamento não fornecido.' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
 
       const { data: budget, error: budgetError } = await supabase
-        .from('orcamentos_revenda_ubiqua')
+        .from('orcamentos')
         .select(`
           *,
-          cliente:informacoes_cliente_ubiqua!orcamentos_revenda_ubiqua_cliente_id_fkey(nome, email, telefone, cpf_cnpj),
-          itens:itens_orcamento_ubiqua(
-            id, produto_id, quantidade, valor_unitario, valor_total, desconto_item, referencia_snapshot, descricao_snapshot, observacao_item,
-            produto:revenda_ubiqua(referencia, descricao, cod_produto, empresa:empresas(nome, razao_social, logradouro, numero, bairro, cidade, estado, cep, cnpj))
+          cliente:contatos!orcamentos_cliente_id_fkey(nome, email, telefone, cpf_cnpj),
+          empresa:empresas!orcamentos_empresa_id_fkey(nome, razao_social, logradouro, numero, bairro, cidade, estado, cep, cnpj),
+          vendedor:funcionarios!orcamentos_vendedor_id_fkey(nome),
+          itens:orcamento_itens(
+            id, produto_id, quantidade, preco_unitario, desconto, descricao, custom_id,
+            produto:produtos(nome, referencia, sku, codigo_produto)
           )
         `)
         .eq('id', id)
         .single()
 
-      if (budgetError || !budget) throw new Error('Orçamento não encontrado.')
+      if (budgetError || !budget) {
+        return new Response(JSON.stringify({ error: 'Orçamento não encontrado.' }), {
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
 
       const pdfDoc = await PDFDocument.create()
       const font = await pdfDoc.embedFont(StandardFonts.Helvetica)
@@ -148,8 +178,7 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      const firstItem = budget.itens?.[0]
-      const empresa = firstItem?.produto?.empresa || {}
+      const empresa = budget.empresa || {}
       const empresaNomeLogo = empresa.nome || 'Luce Nera'
       const empresaNomeAssinatura = empresa.nome || 'Lucenera'
       const empresaRazao = empresa.razao_social || 'Manoella Zauith Leite Lopes'
@@ -201,7 +230,7 @@ Deno.serve(async (req: Request) => {
       page.drawText(`TEL: ${budget.cliente?.telefone || '-'}`, { x: 40, y: y - 47, size: 9, font })
 
       page.drawText('Orçamento', { x: width - 120, y, size: 11, font })
-      page.drawText(`${budget.numero_orcamento || budget.id.split('-')[0].toUpperCase()}`, {
+      page.drawText(`${budget.numero || budget.id.split('-')[0].toUpperCase()}`, {
         x: width - 120,
         y: y - 18,
         size: 13,
@@ -213,8 +242,8 @@ Deno.serve(async (req: Request) => {
       page.drawText('Vendedor', { x: 40, y, size: 9, font })
 
       let vendedorNome = 'Equipe Comercial'
-      if (budget.created_by) {
-        vendedorNome = budget.created_by
+      if (budget.vendedor?.nome) {
+        vendedorNome = budget.vendedor.nome
       }
 
       page.drawText(vendedorNome, { x: 40, y: y - 12, size: 9, font: boldFont })
@@ -234,7 +263,14 @@ Deno.serve(async (req: Request) => {
       let subtotal = 0
 
       const items = (budget.itens || []).sort((a: any, b: any) => {
-        return (a.ordem || 0) - (b.ordem || 0)
+        const idA = (a.custom_id || '').toUpperCase()
+        const idB = (b.custom_id || '').toUpperCase()
+        const numA = parseInt(idA.replace(/^L/, ''), 10)
+        const numB = parseInt(idB.replace(/^L/, ''), 10)
+        if (!isNaN(numA) && !isNaN(numB)) return numA - numB
+        if (!idA && idB) return 1
+        if (idA && !idB) return -1
+        return idA.localeCompare(idB)
       })
 
       items.forEach((item: any) => {
@@ -243,15 +279,17 @@ Deno.serve(async (req: Request) => {
           y = height - 50
         }
 
-        const cod = item.referencia_snapshot || item.produto?.referencia || '-'
-        let desc = String(
-          item.descricao_snapshot || item.produto?.descricao || 'Produto sem nome',
-        ).substring(0, 55)
+        const cod = item.custom_id || item.produto?.referencia || '-'
+        let desc = String(item.descricao || item.produto?.nome || 'Produto sem nome').substring(
+          0,
+          55,
+        )
 
-        const qtd = String(item.quantidade)
-        const preco = Number(item.valor_unitario)
+        const qtd = String(item.quantidade || 1)
+        const preco = Number(item.preco_unitario || 0)
 
-        const finalVal = Number(item.valor_total || preco * item.quantidade)
+        const descItem = Number(item.desconto || 0)
+        const finalVal = preco * Number(item.quantidade || 1) - descItem
 
         subtotal += finalVal
 
@@ -275,8 +313,7 @@ Deno.serve(async (req: Request) => {
 
       y -= 5
 
-      const globalDescPerc = Number(budget.desconto_percentual || 0)
-      const globalDesc = Number(budget.valor_desconto || 0)
+      const globalDesc = Number(budget.desconto_global || 0)
       const finalTotal = Number(budget.valor_total || subtotal - globalDesc)
 
       if (y < 200) {
@@ -350,16 +387,16 @@ Deno.serve(async (req: Request) => {
       })
       y -= 15
 
-      const validadeDate = budget.data_validade
-        ? new Date(budget.data_validade)
+      const validadeDate = budget.validade
+        ? new Date(budget.validade)
         : new Date(new Date(budget.created_at || new Date()).getTime() + 10 * 24 * 60 * 60 * 1000)
       const validadeStr = validadeDate.toLocaleDateString('pt-BR', { timeZone: 'UTC' })
 
+      // Dynamic Policy Filtering: Include only specific items (originally 1, 4, 6) renumbered to 1, 2, 3
       const obsLines = [
         `1- Este orçamento tem validade até ${validadeStr}.`,
         '2- A LuceNera se reserva no direito de não aceitar trocas e devoluções, de acordo com o Código de Defesa do Consumidor.',
-        '3- O prazo de entrega padrão dos materiais é de 30 dias, a partir da aprovação das fichas técnicas.',
-        '    Pelos materiais especiais, prazo a consultar.',
+        '3- O prazo de entrega padrão dos materiais é de 30 dias, a partir da aprovação das fichas técnicas. Pelos materiais especiais, prazo a consultar.',
       ]
 
       obsLines.forEach((line) => {
