@@ -53,7 +53,7 @@ export function useSeparacoes() {
       const { data, error: fetchError } = await supabase
         .from('separacoes')
         .select('*')
-        .in('status', ['material_solicitado', 'em_separacao', 'separado'])
+        .in('status', ['material_solicitado', 'Em separação', 'separado'])
         .order('data_entrega', { ascending: true })
 
       if (fetchError) throw fetchError
