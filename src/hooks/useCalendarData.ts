@@ -32,7 +32,7 @@ export function useCalendarData(year: number, month: number) {
         .select('*')
         .gte('data_entrega', format(start, 'yyyy-MM-dd'))
         .lte('data_entrega', format(end, 'yyyy-MM-dd'))
-        .in('status', ['material_solicitado', 'em_separacao', 'separado'])
+        .in('status', ['material_solicitado', 'Em separação', 'separado'])
 
       if (error) throw error
 
@@ -68,7 +68,7 @@ export function useCalendarData(year: number, month: number) {
             monthData[dateKey].materialSolicitado += 1
             monthData[dateKey].separando += 1
             break
-          case 'em_separacao':
+          case 'Em separação':
             monthData[dateKey].emSeparacao += 1
             monthData[dateKey].separando += 1
             break

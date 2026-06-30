@@ -23,6 +23,11 @@ import { CreateRouteModal } from '@/components/separacao/CreateRouteModal'
 import { useCalendarData, MonthData, DayData } from '@/hooks/useCalendarData'
 import { Separacao } from '@/hooks/useSeparacoes'
 import { StatusSeparacao } from '@/types/separacao'
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+=======
+import { useCalendarData, MonthData, DayData } from '@/hooks/useCalendarData'
+import { Separacao } from '@/hooks/useSeparacoes'
+import { StatusSeparacao } from '@/types/separacao'
 
 export default function CalendarioPage() {
   const navigate = useNavigate()
@@ -56,14 +61,14 @@ export default function CalendarioPage() {
           total: filteredEntregas.length,
           materialSolicitado: filteredEntregas.filter((e) => e.status === 'material_solicitado')
             .length,
-          emSeparacao: filteredEntregas.filter((e) => e.status === 'em_separacao').length,
+          emSeparacao: filteredEntregas.filter((e) => e.status === 'Em separação').length,
           separado: filteredEntregas.filter((e) => e.status === 'separado').length,
           garantia: filteredEntregas.filter((e) => e.status === 'matheus_separacao_garantia')
             .length,
           pendente: filteredEntregas.filter((e) => e.status === 'pendente').length,
           finalizado: filteredEntregas.filter((e) => e.status === 'finalizado').length,
           separando: filteredEntregas.filter(
-            (e) => e.status === 'material_solicitado' || e.status === 'em_separacao',
+            (e) => e.status === 'material_solicitado' || e.status === 'Em separação',
           ).length,
           entregas: filteredEntregas,
         }
@@ -173,7 +178,7 @@ export default function CalendarioPage() {
                   <Package className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">Solicitado</span>
                 </TabsTrigger>
-                <TabsTrigger value="em_separacao" className="text-xs px-3 gap-1.5">
+                <TabsTrigger value="Em separação" className="text-xs px-3 gap-1.5">
                   <Scissors className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">Em Separação</span>
                 </TabsTrigger>

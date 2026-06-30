@@ -1,6 +1,6 @@
 export type StatusSeparacao =
   | 'material_solicitado'
-  | 'em_separacao'
+  | 'Em separação'
   | 'separado'
   | 'matheus_separacao_garantia'
   | 'pendente'
