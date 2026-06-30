@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react'
-import { Plus, CalendarDays } from 'lucide-react'
+import { Plus, CalendarDays, Search, ShieldCheck } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { DateRange } from 'react-day-picker'
 import { AppLayout } from '@/components/layout/AppLayout'
@@ -18,7 +18,11 @@ import { EmptyState } from '@/components/separacao/EmptyState'
 import { LoadingSkeleton } from '@/components/separacao/LoadingSkeleton'
 import { SeparacaoFormModal } from '@/components/separacao/SeparacaoFormModal'
 import { CreateRouteModal } from '@/components/separacao/CreateRouteModal'
+import { FinalizarEntregaModal } from '@/components/separacao/FinalizarEntregaModal'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
 import { useSeparacoes, Separacao } from '@/hooks/useSeparacoes'
 import { FiltroSegmento, StatusSeparacao } from '@/types/separacao'
 import { useUserRole } from '@/hooks/useUserRole'
@@ -34,7 +38,7 @@ import {
   eachDayOfInterval,
 } from 'date-fns'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Package, Scissors, PackageCheck, ShieldCheck } from 'lucide-react'
+import { Package, Scissors, PackageCheck } from 'lucide-react'
 
 export default function SeparacaoPage() {
   const navigate = useNavigate()
@@ -44,18 +48,20 @@ export default function SeparacaoPage() {
   const [statusFilter, setStatusFilter] = useState<'todos' | StatusSeparacao>('todos')
   const [tipoPedidoFilter, setTipoPedidoFilter] = useState<'todos' | 'normal' | 'garantia'>('todos')
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [clientFilter, setClientFilter] = useState<string>('todos')
+  const [garantiaOnly, setGarantiaOnly] = useState(false)
   const [isFormModalOpen, setIsFormModalOpen] = useState(false)
   const [editingSeparacao, setEditingSeparacao] = useState<Separacao | null>(null)
   const [highlightedId, setHighlightedId] = useState<string | null>(null)
+  const [finalizarSeparacao, setFinalizarSeparacao] = useState<Separacao | null>(null)
 
-  // Route modal state
   const [routeModalData, setRouteModalData] = useState<{
     isOpen: boolean
     date: Date
     deliveries: Separacao[]
   } | null>(null)
 
-  // Clear highlight after 2 seconds
   useEffect(() => {
     if (highlightedId) {
       const timer = setTimeout(() => setHighlightedId(null), 2000)
@@ -63,17 +69,19 @@ export default function SeparacaoPage() {
     }
   }, [highlightedId])
 
-  // Filter logic - combines segment filter and date range filter
+  const uniqueClients = useMemo(() => {
+    const clients = new Set(separacoes.map((s) => s.cliente).filter(Boolean))
+    return Array.from(clients).sort()
+  }, [separacoes])
+
   const filteredSeparacoes = useMemo(() => {
     const today = startOfDay(new Date())
 
     return separacoes.filter((s) => {
       const entregaDate = startOfDay(parseISO(s.data_entrega))
 
-      // Apply status filter
       if (statusFilter !== 'todos' && s.status !== statusFilter) return false
 
-      // Apply tipo pedido filter
       if (tipoPedidoFilter !== 'todos') {
         const tipo = s.tipo_pedido || 'normal'
         if (tipoPedidoFilter === 'garantia' && tipo !== 'garantia' && !s.inclui_garantia)
@@ -82,19 +90,26 @@ export default function SeparacaoPage() {
           return false
       }
 
-      // Apply date range filter first if active
+      if (garantiaOnly && !s.inclui_garantia && s.tipo_pedido !== 'garantia') return false
+
+      if (clientFilter !== 'todos' && s.cliente !== clientFilter) return false
+
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase()
+        const matchesCliente = s.cliente.toLowerCase().includes(query)
+        const matchesObra = s.codigo_obra.toLowerCase().includes(query)
+        if (!matchesCliente && !matchesObra) return false
+      }
+
       if (dateRange?.from) {
         const rangeStart = startOfDay(dateRange.from)
         const rangeEnd = dateRange.to ? startOfDay(dateRange.to) : rangeStart
-
         const inRange =
           (isAfter(entregaDate, rangeStart) || isEqual(entregaDate, rangeStart)) &&
           (isBefore(entregaDate, rangeEnd) || isEqual(entregaDate, rangeEnd))
-
         if (!inRange) return false
       }
 
-      // Apply segment filter
       let startDate: Date | null = null
       switch (filtro) {
         case 'ultima-semana':
@@ -116,9 +131,17 @@ export default function SeparacaoPage() {
       if (!startDate) return true
       return isAfter(entregaDate, startDate) || isEqual(entregaDate, startDate)
     })
-  }, [separacoes, filtro, dateRange, statusFilter, tipoPedidoFilter])
+  }, [
+    separacoes,
+    filtro,
+    dateRange,
+    statusFilter,
+    tipoPedidoFilter,
+    searchQuery,
+    clientFilter,
+    garantiaOnly,
+  ])
 
-  // Group by date - expand "em_separacao" entries across days from updated_at to data_entrega
   const groupedByDate = useMemo(() => {
     const groups: { [key: string]: Separacao[] } = {}
     const today = startOfDay(new Date())
@@ -132,16 +155,12 @@ export default function SeparacaoPage() {
 
     filteredSeparacoes.forEach((s) => {
       if (s.status === 'em_separacao' && s.data_inicio_separacao) {
-        // Show on every day from data_inicio_separacao to data_entrega
         const statusChangedAt = startOfDay(parseISO(s.data_inicio_separacao))
         const deliveryDate = startOfDay(parseISO(s.data_entrega))
         const rangeStart = isAfter(statusChangedAt, today) ? today : statusChangedAt
-
         if (!isAfter(rangeStart, deliveryDate)) {
           const days = eachDayOfInterval({ start: rangeStart, end: deliveryDate })
-          days.forEach((day) => {
-            addToGroup(format(day, 'yyyy-MM-dd'), s)
-          })
+          days.forEach((day) => addToGroup(format(day, 'yyyy-MM-dd'), s))
         } else {
           addToGroup(s.data_entrega, s)
         }
@@ -150,17 +169,10 @@ export default function SeparacaoPage() {
       }
     })
 
-    // Sort by date (ascending - closest first)
     return Object.entries(groups)
-      .filter(([dateStr]) => {
-        const d = parseISO(dateStr)
-        return !isNaN(d.getTime())
-      })
+      .filter(([dateStr]) => !isNaN(parseISO(dateStr).getTime()))
       .sort(([a], [b]) => new Date(a).getTime() - new Date(b).getTime())
-      .map(([dateStr, items]) => ({
-        date: parseISO(dateStr),
-        items,
-      }))
+      .map(([dateStr, items]) => ({ date: parseISO(dateStr), items }))
   }, [filteredSeparacoes])
 
   const handleStatusChange = (id: string, newStatus: StatusSeparacao) => {
@@ -191,9 +203,13 @@ export default function SeparacaoPage() {
     setRouteModalData({ isOpen: true, date, deliveries })
   }
 
+  const handleFinalizarSuccess = () => {
+    refetch()
+    setFinalizarSeparacao(null)
+  }
+
   return (
     <AppLayout>
-      {/* Page Header */}
       <div className="sticky top-16 z-40 bg-card border-b border-border shadow-header">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex flex-col gap-4">
@@ -204,7 +220,7 @@ export default function SeparacaoPage() {
                   onClick={handleOpenCreate}
                   className="bg-success hover:bg-success-dark text-success-foreground"
                 >
-                  <Plus className="w-5 h-5 mr-2 sm:mr-2" />
+                  <Plus className="w-5 h-5 mr-2" />
                   <span className="hidden sm:inline">Nova Separação</span>
                   <span className="sm:hidden">Nova</span>
                 </Button>
@@ -240,6 +256,41 @@ export default function SeparacaoPage() {
               </Tabs>
             </div>
             <div className="flex items-center gap-3 flex-wrap">
+              <div className="relative flex-1 min-w-[200px] max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Buscar por cliente ou obra..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 bg-card border-border"
+                />
+              </div>
+              <Select value={clientFilter} onValueChange={setClientFilter}>
+                <SelectTrigger className="w-[180px] bg-card border-border">
+                  <SelectValue placeholder="Filtrar cliente..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os clientes</SelectItem>
+                  {uniqueClients.map((client) => (
+                    <SelectItem key={client} value={client}>
+                      {client}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-border bg-card">
+                <Switch
+                  checked={garantiaOnly}
+                  onCheckedChange={setGarantiaOnly}
+                  id="garantia-toggle"
+                />
+                <Label htmlFor="garantia-toggle" className="text-xs font-medium cursor-pointer">
+                  Só Garantia
+                </Label>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 flex-wrap">
               <Select
                 value={tipoPedidoFilter}
                 onValueChange={(v) => setTipoPedidoFilter(v as typeof tipoPedidoFilter)}
@@ -273,7 +324,6 @@ export default function SeparacaoPage() {
         </div>
       </div>
 
-      {/* Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {isLoading ? (
           <LoadingSkeleton />
@@ -299,6 +349,7 @@ export default function SeparacaoPage() {
                   onStatusChange={handleStatusChange}
                   onEdit={handleOpenEdit}
                   onDelete={deleteSeparacao}
+                  onFinalizar={setFinalizarSeparacao}
                   isHighlighted={separacao.id === highlightedId}
                   isAdmin={isAdmin}
                 />
@@ -308,7 +359,6 @@ export default function SeparacaoPage() {
         )}
       </div>
 
-      {/* Separacao Form Modal (Create/Edit) */}
       <SeparacaoFormModal
         isOpen={isFormModalOpen}
         onClose={handleCloseModal}
@@ -316,7 +366,6 @@ export default function SeparacaoPage() {
         editData={editingSeparacao}
       />
 
-      {/* Create Route Modal */}
       {routeModalData && (
         <CreateRouteModal
           isOpen={routeModalData.isOpen}
@@ -325,6 +374,13 @@ export default function SeparacaoPage() {
           deliveries={routeModalData.deliveries}
         />
       )}
+
+      <FinalizarEntregaModal
+        isOpen={!!finalizarSeparacao}
+        onClose={() => setFinalizarSeparacao(null)}
+        separacao={finalizarSeparacao}
+        onSuccess={handleFinalizarSuccess}
+      />
     </AppLayout>
   )
 }

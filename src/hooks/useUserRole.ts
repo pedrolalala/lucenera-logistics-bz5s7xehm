@@ -6,8 +6,10 @@ interface UserRole {
   id: string
   user_id: string
   email: string
-  role: 'admin' | 'user' | 'entregador'
+  role: 'admin' | 'operador' | 'entregador' | 'user'
   nome_completo: string | null
+  funcao: string | null
+  sistema: string | null
   created_at: string | null
   updated_at: string | null
 }
@@ -20,22 +22,21 @@ export function useUserRole() {
     isLoading,
     error,
   } = useQuery({
-    queryKey: ['user-role', user?.id],
+    queryKey: ['user-role-separacao', user?.id],
     queryFn: async () => {
       if (!user?.id) return null
 
-      const { data, error } = await supabase
-        .from('user_roles')
+      const { data, error: queryError } = await supabase
+        .from('user_roles_separacao')
         .select('*')
         .eq('user_id', user.id)
+        .eq('sistema', 'Separação e Entregas')
         .maybeSingle()
 
-      if (error) {
-        console.error('Error fetching user role:', error)
+      if (queryError) {
+        console.error('Error fetching user role from user_roles_separacao:', queryError)
       }
 
-      // Hardcoded fallback para garantir que o dono sempre tenha acesso ao admin
-      // mesmo que as tabelas do banco estejam dessincronizadas
       if (user.email === 'pedro@lucenera.com.br') {
         return {
           id: data?.id || 'admin-fallback',
@@ -43,12 +44,13 @@ export function useUserRole() {
           email: user.email,
           role: 'admin',
           nome_completo: data?.nome_completo || 'Pedro',
+          funcao: data?.funcao || null,
+          sistema: data?.sistema || 'Separação e Entregas',
           created_at: data?.created_at || new Date().toISOString(),
           updated_at: data?.updated_at || new Date().toISOString(),
         } as UserRole
       }
 
-      // Retorno seguro caso o usuário não tenha role explícita definida no banco ainda
       return (
         (data as UserRole) ||
         ({
@@ -57,6 +59,8 @@ export function useUserRole() {
           email: user.email || '',
           role: 'user',
           nome_completo: user.email?.split('@')[0] || 'Usuário',
+          funcao: null,
+          sistema: 'Separação e Entregas',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         } as UserRole)
@@ -68,8 +72,9 @@ export function useUserRole() {
   return {
     userRole,
     isAdmin: userRole?.role === 'admin',
-    isUser: userRole?.role === 'user',
+    isOperador: userRole?.role === 'operador',
     isEntregador: userRole?.role === 'entregador',
+    isUser: userRole?.role === 'user',
     isLoading,
     error,
     userName: userRole?.nome_completo || user?.email?.split('@')[0] || 'Usuário',

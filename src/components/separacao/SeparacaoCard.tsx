@@ -7,26 +7,29 @@ import {
   Edit,
   Trash2,
   Check,
-  Zap,
   RotateCcw,
   ChevronDown,
   ChevronUp,
   Calendar,
-  Box,
   Package,
   User,
   Phone,
   FileText,
   Circle,
+  Clock,
+  FileCheck,
+  Paperclip,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { SeparacaoFiles } from '@/components/separacao/SeparacaoFiles'
 
 interface SeparacaoCardProps {
   separacao: Separacao
   onStatusChange: (id: string, status: StatusSeparacao) => void
   onEdit: (separacao: Separacao) => void
   onDelete: (id: string) => void
+  onFinalizar: (separacao: Separacao) => void
   isHighlighted?: boolean
   isAdmin?: boolean
 }
@@ -36,6 +39,7 @@ export function SeparacaoCard({
   onStatusChange,
   onEdit,
   onDelete,
+  onFinalizar,
   isHighlighted,
   isAdmin,
 }: SeparacaoCardProps) {
@@ -44,16 +48,19 @@ export function SeparacaoCard({
   const isSeparado = separacao.status === 'separado'
   const isSolicitado = separacao.status === 'material_solicitado'
   const isGarantia = separacao.tipo_pedido === 'garantia' || separacao.inclui_garantia
+  const deliveryType = separacao.delivery_type || 'flexible'
+  const isScheduled = deliveryType === 'scheduled'
+  const enderecoDisplay = separacao.endereco_entrega || separacao.endereco || 'N/A'
 
   let cardBorderClasses = 'border border-border border-l-[6px]'
   if (isGarantia) {
-    cardBorderClasses = 'border-orange-300 border-l-orange-500'
+    cardBorderClasses = 'border-orange-300 border-l-orange-500 border-l-[6px]'
   } else if (isSeparado) {
-    cardBorderClasses = 'border-border border-l-[#10c98f]'
+    cardBorderClasses = 'border-border border-l-[#10c98f] border-l-[6px]'
   } else if (isSolicitado) {
-    cardBorderClasses = 'border-border border-l-purple-500'
+    cardBorderClasses = 'border-border border-l-purple-500 border-l-[6px]'
   } else {
-    cardBorderClasses = 'border-border border-l-blue-500'
+    cardBorderClasses = 'border-border border-l-blue-500 border-l-[6px]'
   }
 
   const complexityConfig = {
@@ -78,9 +85,7 @@ export function SeparacaoCard({
       )}
     >
       <div className="p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        {/* Left/Middle area */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-4 flex-1 w-full">
-          {/* Status & Complexity */}
           <div className="flex flex-wrap items-center gap-2 shrink-0 md:max-w-[320px]">
             {isSeparado ? (
               <div className="flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-semibold border border-[#10c98f] text-[#10c98f] bg-[#10c98f]/10">
@@ -88,14 +93,13 @@ export function SeparacaoCard({
               </div>
             ) : isSolicitado ? (
               <div className="flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-semibold border border-purple-500 text-purple-600 bg-purple-50">
-                <Package className="w-3.5 h-3.5" /> Material Solicitado
+                <Package className="w-3.5 h-3.5" /> Solicitado
               </div>
             ) : (
               <div className="flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-semibold border border-blue-500 text-blue-600 bg-blue-50">
                 <RotateCcw className="w-3.5 h-3.5" /> Em Separação
               </div>
             )}
-
             <div
               className={cn(
                 'flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold border',
@@ -104,15 +108,17 @@ export function SeparacaoCard({
             >
               {compData.label}
             </div>
-
             {isGarantia && (
               <div className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold border border-orange-500 text-orange-600 bg-orange-50">
                 <Circle className="w-2.5 h-2.5" /> Garantia
               </div>
             )}
+            <div className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium border border-border text-muted-foreground bg-muted">
+              <Clock className="w-3 h-3" />
+              {isScheduled ? 'Agendado' : 'Flexível'}
+            </div>
           </div>
 
-          {/* Title & Info */}
           <div className="flex-1 min-w-0">
             <div
               className="font-bold text-foreground text-sm uppercase truncate"
@@ -129,11 +135,17 @@ export function SeparacaoCard({
                 <Calendar className="w-3.5 h-3.5" />
                 {separacao.data_entrega ? format(parseISO(separacao.data_entrega), 'dd/MM/yy') : ''}
               </span>
+              <span
+                className="flex items-center gap-1 truncate max-w-[200px]"
+                title={enderecoDisplay}
+              >
+                <MapPin className="w-3.5 h-3.5 shrink-0" />
+                {enderecoDisplay}
+              </span>
             </div>
           </div>
         </div>
 
-        {/* Right Actions */}
         <div className="flex items-center gap-3 w-full md:w-auto shrink-0 justify-between md:justify-end border-t md:border-t-0 border-border pt-3 md:pt-0 mt-2 md:mt-0">
           <span
             className="text-xs text-muted-foreground hidden lg:block truncate max-w-[120px]"
@@ -141,17 +153,25 @@ export function SeparacaoCard({
           >
             {separacao.gestora_equipe}
           </span>
-
           <div className="flex flex-wrap items-center gap-2">
             {isSeparado ? (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 text-blue-600 border-blue-200 hover:bg-blue-50 hover:text-blue-700"
-                onClick={() => onStatusChange(separacao.id, 'em_separacao')}
-              >
-                <RotateCcw className="w-3.5 h-3.5 mr-1.5" /> Voltar
-              </Button>
+              <>
+                <Button
+                  size="sm"
+                  className="h-8 bg-success hover:bg-success-dark text-success-foreground"
+                  onClick={() => onFinalizar(separacao)}
+                >
+                  <FileCheck className="w-3.5 h-3.5 mr-1.5" /> Finalizar
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-blue-600 border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+                  onClick={() => onStatusChange(separacao.id, 'em_separacao')}
+                >
+                  <RotateCcw className="w-3.5 h-3.5 mr-1.5" /> Voltar
+                </Button>
+              </>
             ) : isSolicitado ? (
               <Button
                 size="sm"
@@ -179,7 +199,6 @@ export function SeparacaoCard({
                 </Button>
               </>
             )}
-
             <Button
               variant="ghost"
               size="sm"
@@ -197,7 +216,6 @@ export function SeparacaoCard({
         </div>
       </div>
 
-      {/* Expanded Details */}
       {isExpanded && (
         <div className="px-4 pb-4 pt-3 border-t border-border bg-muted/20 animate-fade-in-up">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -205,9 +223,8 @@ export function SeparacaoCard({
               <p className="text-[11px] font-semibold text-muted-foreground uppercase flex items-center gap-1.5">
                 <MapPin className="w-3 h-3" /> Endereço de Entrega
               </p>
-              <p className="text-sm text-foreground leading-relaxed">{separacao.endereco}</p>
+              <p className="text-sm text-foreground leading-relaxed">{enderecoDisplay}</p>
             </div>
-
             <div className="space-y-1.5">
               <p className="text-[11px] font-semibold text-muted-foreground uppercase flex items-center gap-1.5">
                 <User className="w-3 h-3" /> Responsável
@@ -221,7 +238,6 @@ export function SeparacaoCard({
                 </p>
               )}
             </div>
-
             <div className="space-y-1.5">
               <p className="text-[11px] font-semibold text-muted-foreground uppercase flex items-center gap-1.5">
                 <FileText className="w-3 h-3" /> Detalhes do Pedido
@@ -242,17 +258,15 @@ export function SeparacaoCard({
                 </p>
               </div>
             </div>
-
             <div className="space-y-1.5 flex flex-col justify-between">
               <div>
                 <p className="text-[11px] font-semibold text-muted-foreground uppercase flex items-center gap-1.5">
-                  <Box className="w-3 h-3" /> Observações
+                  <FileText className="w-3 h-3" /> Observações
                 </p>
                 <p className="text-sm text-foreground line-clamp-3">
                   {separacao.observacoes_internas || 'Nenhuma observação.'}
                 </p>
               </div>
-
               <div className="flex items-center justify-end gap-2 mt-4 pt-4 border-t border-border/50">
                 <Button
                   variant="outline"
@@ -274,6 +288,12 @@ export function SeparacaoCard({
                 )}
               </div>
             </div>
+          </div>
+          <div className="mt-4 pt-4 border-t border-border/50">
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase flex items-center gap-1.5 mb-2">
+              <Paperclip className="w-3 h-3" /> Arquivos Anexados
+            </p>
+            <SeparacaoFiles separacaoId={separacao.id} />
           </div>
         </div>
       )}

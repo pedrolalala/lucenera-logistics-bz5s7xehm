@@ -13,9 +13,10 @@ export interface Separacao {
   responsavel_recebimento: string
   telefone: string | null
   endereco: string
+  endereco_entrega: string | null
   status: StatusSeparacao
   material_tipo: 'texto' | 'imagem' | 'pdf' | 'tabela' | 'arquivos' | null
-  material_conteudo: string
+  material_conteudo: string | null
   delivery_type: DeliveryType
   scheduled_time: string | null
   order_in_route: number | null
@@ -112,6 +113,56 @@ export function useSeparacoes() {
     }
   }
 
+  const finalizarEntrega = async (
+    id: string,
+    data: { recebido_por: string; observacoes: string; data_entrega_real: string },
+  ) => {
+    try {
+      const sep = separacoes.find((s) => s.id === id)
+      if (!sep) return
+
+      const mc = sep.material_conteudo as unknown
+      const materialConteudoStr = mc
+        ? typeof mc === 'object'
+          ? JSON.stringify(mc)
+          : String(mc)
+        : null
+
+      const { error: insertError } = await supabase.from('entregas_finalizadas').insert({
+        separacao_id: id,
+        cliente: sep.cliente,
+        codigo_obra: sep.codigo_obra,
+        data_entrega_real: data.data_entrega_real,
+        endereco: sep.endereco || sep.endereco_entrega || null,
+        recebido_por: data.recebido_por,
+        material_tipo: sep.material_tipo,
+        material_conteudo: materialConteudoStr,
+        observacoes: data.observacoes || null,
+        observacoes_internas: sep.observacoes_internas,
+        gestora_equipe: sep.gestora_equipe,
+        numero_entrega: sep.numero_entrega,
+      })
+
+      if (insertError) throw insertError
+
+      const { error: updateError } = await supabase
+        .from('separacoes')
+        .update({ status: 'finalizado' })
+        .eq('id', id)
+
+      if (updateError) throw updateError
+
+      setSeparacoes((prev) => prev.filter((s) => s.id !== id))
+      toast({
+        title: 'Entrega finalizada com sucesso!',
+        className: 'bg-success text-white border-none',
+      })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Erro ao finalizar entrega'
+      toast({ title: 'Erro ao finalizar', description: message, variant: 'destructive' })
+    }
+  }
+
   const findByCodigoObra = async (codigo: string): Promise<Separacao | null> => {
     try {
       const isNumeroEntrega = /^LUC-/i.test(codigo)
@@ -142,6 +193,7 @@ export function useSeparacoes() {
     updateStatus,
     deleteSeparacao,
     findByCodigoObra,
+    finalizarEntrega,
     refetch: fetchSeparacoes,
   }
 }
