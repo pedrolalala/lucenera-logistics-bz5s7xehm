@@ -144,7 +144,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             {/* User Menu */}
             <div className="flex items-center gap-2">
               <a
-                href="https://central-lucenera.goskip.app/"
+                href="https://central-lucenera-dashboard-1c9ba.goskip.app/dashboard"
                 title="Voltar para a Central Lucenera"
                 className="hidden sm:flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
               >
