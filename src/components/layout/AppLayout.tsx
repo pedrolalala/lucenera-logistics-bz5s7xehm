@@ -12,6 +12,7 @@ import {
   AlertTriangle,
   KeyRound,
   ChevronDown,
+  Building2,
 } from 'lucide-react'
 import luceneraHorizontal from '@/assets/logos/lucenera-horizontal.png'
 import { cn } from '@/lib/utils'
@@ -142,6 +143,14 @@ export function AppLayout({ children }: AppLayoutProps) {
 
             {/* User Menu */}
             <div className="flex items-center gap-2">
+              <a
+                href="https://central-lucenera.goskip.app/"
+                title="Voltar para a Central Lucenera"
+                className="hidden sm:flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              >
+                <Building2 className="w-4 h-4" />
+                Central
+              </a>
               <Popover>
                 <PopoverTrigger asChild>
                   <button className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-muted transition-colors">
