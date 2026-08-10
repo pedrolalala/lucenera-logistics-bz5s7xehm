@@ -69,7 +69,6 @@ export function SeparacaoFormModal({ isOpen, onClose, onSuccess, editData }: any
     cod: '',
     data: undefined as Date | undefined,
     venda: '',
-    parcial: '',
     solic: '',
     gestora: '',
     hora: 'flexible',
@@ -91,7 +90,6 @@ export function SeparacaoFormModal({ isOpen, onClose, onSuccess, editData }: any
         cod: String(editData.codigo_obra || ''),
         data: editData.data_entrega ? new Date(editData.data_entrega) : undefined,
         venda: (editData.numero_venda || []).join(', '),
-        parcial: (editData.separacoes_parciais || []).join(', '),
         solic: editData.solicitante || '',
         gestora: editData.gestora_equipe || '',
         hora: editData.delivery_type || 'flexible',
@@ -111,7 +109,6 @@ export function SeparacaoFormModal({ isOpen, onClose, onSuccess, editData }: any
         cod: '',
         data: undefined,
         venda: '',
-        parcial: '',
         solic: '',
         gestora: '',
         hora: 'flexible',
@@ -153,7 +150,6 @@ export function SeparacaoFormModal({ isOpen, onClose, onSuccess, editData }: any
           .split(',')
           .map((s) => s.trim())
           .filter(Boolean),
-        separacoes_parciais: d.parcial ? d.parcial.split(',').map((s) => s.trim()) : null,
         solicitante: d.solic || null,
         gestora_equipe: d.gestora,
         delivery_type: d.hora,
@@ -255,14 +251,6 @@ export function SeparacaoFormModal({ isOpen, onClose, onSuccess, editData }: any
                   placeholder="Digite o número da venda"
                   value={d.venda}
                   onChange={(e) => setD({ ...d, venda: e.target.value })}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs font-bold text-muted-foreground">SEPARAÇÃO PARCIAL</Label>
-                <Input
-                  placeholder="Digite o código parcial"
-                  value={d.parcial}
-                  onChange={(e) => setD({ ...d, parcial: e.target.value })}
                 />
               </div>
               <div className="space-y-1.5">
