@@ -78,8 +78,9 @@ export function SeparacaoCard({
 
   return (
     <div
+      onDoubleClick={() => onEdit(separacao)}
       className={cn(
-        'bg-card shadow-sm rounded-lg transition-all mb-3',
+        'bg-card shadow-sm rounded-lg transition-all mb-3 cursor-pointer',
         cardBorderClasses,
         isHighlighted ? 'ring-2 ring-primary' : 'hover:shadow-md',
       )}

@@ -43,7 +43,8 @@ function PendenciaCard({
 }) {
   return (
     <Card
-      className={`border-l-[6px] shadow-lg ${isResolved ? 'border-l-success opacity-90' : 'border-l-destructive'}`}
+      onDoubleClick={!isResolved ? onSolveClick : undefined}
+      className={`border-l-[6px] shadow-lg ${isResolved ? 'border-l-success opacity-90' : 'border-l-destructive cursor-pointer'}`}
     >
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
