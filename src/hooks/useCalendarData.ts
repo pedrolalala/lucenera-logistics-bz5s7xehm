@@ -32,7 +32,9 @@ export function useCalendarData(year: number, month: number) {
         .select('*')
         .gte('data_entrega', format(start, 'yyyy-MM-dd'))
         .lte('data_entrega', format(end, 'yyyy-MM-dd'))
-        .in('status', ['material_solicitado', 'Em separação', 'separado'])
+        // Fix pós-SPEC-099: mesmo motivo do useSeparacoes — "Pronto" precisa
+        // contar aqui, senão a Separação Parcial fica invisível no calendário.
+        .in('status', ['material_solicitado', 'Em separação', 'separado', 'Pronto'])
 
       if (error) throw error
 
@@ -73,6 +75,7 @@ export function useCalendarData(year: number, month: number) {
             monthData[dateKey].separando += 1
             break
           case 'separado':
+          case 'Pronto':
             monthData[dateKey].separado += 1
             break
           case 'matheus_separacao_garantia':

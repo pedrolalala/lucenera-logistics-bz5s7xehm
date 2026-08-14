@@ -54,7 +54,10 @@ export function useSeparacoes() {
       const { data, error: fetchError } = await supabase
         .from('separacoes')
         .select('*')
-        .in('status', ['material_solicitado', 'Em separação', 'separado'])
+        // Fix pós-SPEC-099: "Pronto" (Separação Parcial) precisa aparecer
+        // aqui — antes ficava invisível pro Matheus mesmo já totalmente
+        // separado no estoque.
+        .in('status', ['material_solicitado', 'Em separação', 'separado', 'Pronto'])
         .order('data_entrega', { ascending: true })
 
       if (fetchError) throw fetchError

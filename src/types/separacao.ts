@@ -5,6 +5,11 @@ export type StatusSeparacao =
   | 'matheus_separacao_garantia'
   | 'pendente'
   | 'finalizado'
+  // Fix pós-SPEC-099: "Pronto" é o status que a Separação Parcial escreve
+  // quando uma venda fica 100% separada — antes disso nenhuma tela do
+  // Logística incluía esse valor nos filtros, então essas separações
+  // nunca apareciam pro Matheus.
+  | 'Pronto'
 
 export type NivelComplexidade = 'facil' | 'medio' | 'dificil'
 
