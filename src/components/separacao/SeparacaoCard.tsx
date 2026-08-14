@@ -23,6 +23,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { SeparacaoFiles } from '@/components/separacao/SeparacaoFiles'
+import { SeparacaoItensList } from '@/components/separacao/SeparacaoItensList'
 
 interface SeparacaoCardProps {
   separacao: Separacao
@@ -246,7 +247,14 @@ export function SeparacaoCard({
               <div className="text-sm text-foreground space-y-1">
                 <p>
                   Nº Venda:{' '}
-                  <span className="font-medium">{separacao.numero_venda?.join(', ') || 'N/A'}</span>
+                  <span className="font-medium">
+                    {/* Fix: numero_venda é `text` no banco (não array) para
+                        separações vindas da Separação Parcial — .join()
+                        quebrava a tela inteira nesses casos. */}
+                    {Array.isArray(separacao.numero_venda)
+                      ? separacao.numero_venda.join(', ')
+                      : separacao.numero_venda || 'N/A'}
+                  </span>
                 </p>
                 <p>
                   Entrega:{' '}
@@ -289,6 +297,12 @@ export function SeparacaoCard({
                 )}
               </div>
             </div>
+          </div>
+          <div className="mt-4 pt-4 border-t border-border/50">
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase flex items-center gap-1.5 mb-2">
+              <Package className="w-3 h-3" /> Peças desta separação
+            </p>
+            <SeparacaoItensList separacaoId={separacao.id} />
           </div>
           <div className="mt-4 pt-4 border-t border-border/50">
             <p className="text-[11px] font-semibold text-muted-foreground uppercase flex items-center gap-1.5 mb-2">
