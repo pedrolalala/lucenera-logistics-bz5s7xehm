@@ -29,6 +29,10 @@ const TIPO_PROBLEMA_LABELS: Record<string, string> = {
   endereco_incorreto: '🔴 Endereço incorreto/não encontrado',
   acesso_bloqueado: '🔴 Acesso bloqueado à obra',
   problema_tecnico: '🔴 Problema técnico na instalação',
+  // Separação Parcial (SPEC-090): estorno de separação já registrada
+  // (Ag Separar ou além) — o Matheus pode já ter começado a separar
+  // fisicamente, por isso vira pendência em vez de só um log silencioso.
+  separacao_estornada: '⚠️ Separação estornada — revisar antes de continuar',
   outros: '🔴 Outros',
 }
 
