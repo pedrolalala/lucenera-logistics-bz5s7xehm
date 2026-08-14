@@ -54,10 +54,11 @@ export function useSeparacoes() {
       const { data, error: fetchError } = await supabase
         .from('separacoes')
         .select('*')
-        // Fix pós-SPEC-099: "Pronto" (Separação Parcial) precisa aparecer
-        // aqui — antes ficava invisível pro Matheus mesmo já totalmente
-        // separado no estoque.
-        .in('status', ['material_solicitado', 'Em separação', 'separado', 'Pronto'])
+        // Fix pós-SPEC-099: usuário pediu explicitamente que o pedido
+        // apareça no Logística "no momento em que vai para separar" — ou
+        // seja, assim que uma separação parcial é criada (status
+        // 'Pendente'), não só quando a venda inteira fica 'Pronto'.
+        .in('status', ['material_solicitado', 'Em separação', 'separado', 'Pendente', 'Pronto'])
         .order('data_entrega', { ascending: true })
 
       if (fetchError) throw fetchError

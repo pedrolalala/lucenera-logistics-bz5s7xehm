@@ -78,7 +78,10 @@ export default function SeparacaoPage() {
     const today = startOfDay(new Date())
 
     return separacoes.filter((s) => {
-      const entregaDate = startOfDay(parseISO(s.data_entrega))
+      // Fix: separações 'Pendente' da Separação Parcial não têm
+      // data_entrega ainda (só ganham data quando a venda inteira fica
+      // 'Pronto') — parseISO(null) quebrava a página inteira.
+      const entregaDate = s.data_entrega ? startOfDay(parseISO(s.data_entrega)) : null
 
       if (statusFilter !== 'todos' && s.status !== statusFilter) return false
 
@@ -102,6 +105,7 @@ export default function SeparacaoPage() {
       }
 
       if (dateRange?.from) {
+        if (!entregaDate) return false
         const rangeStart = startOfDay(dateRange.from)
         const rangeEnd = dateRange.to ? startOfDay(dateRange.to) : rangeStart
         const inRange =
@@ -129,6 +133,7 @@ export default function SeparacaoPage() {
       }
 
       if (!startDate) return true
+      if (!entregaDate) return true
       return isAfter(entregaDate, startDate) || isEqual(entregaDate, startDate)
     })
   }, [
@@ -142,6 +147,19 @@ export default function SeparacaoPage() {
     garantiaOnly,
   ])
 
+  // Fix: separações sem data_entrega ainda (ex.: 'Pendente' recém-criada
+  // pela Separação Parcial) não cabem no agrupamento por dia — ficam numa
+  // seção própria, "Aguardando data de entrega", em vez de quebrar o
+  // agrupamento por data.
+  const separacoesSemData = useMemo(
+    () => filteredSeparacoes.filter((s) => !s.data_entrega),
+    [filteredSeparacoes],
+  )
+  const separacoesComData = useMemo(
+    () => filteredSeparacoes.filter((s) => s.data_entrega),
+    [filteredSeparacoes],
+  )
+
   const groupedByDate = useMemo(() => {
     const groups: { [key: string]: Separacao[] } = {}
     const today = startOfDay(new Date())
@@ -153,7 +171,7 @@ export default function SeparacaoPage() {
       }
     }
 
-    filteredSeparacoes.forEach((s) => {
+    separacoesComData.forEach((s) => {
       if (s.status === 'em_separacao' && s.data_inicio_separacao) {
         const statusChangedAt = startOfDay(parseISO(s.data_inicio_separacao))
         const deliveryDate = startOfDay(parseISO(s.data_entrega))
@@ -173,7 +191,7 @@ export default function SeparacaoPage() {
       .filter(([dateStr]) => !isNaN(parseISO(dateStr).getTime()))
       .sort(([a], [b]) => new Date(a).getTime() - new Date(b).getTime())
       .map(([dateStr, items]) => ({ date: parseISO(dateStr), items }))
-  }, [filteredSeparacoes])
+  }, [separacoesComData])
 
   const handleStatusChange = (id: string, newStatus: StatusSeparacao) => {
     updateStatus(id, newStatus)
@@ -327,10 +345,36 @@ export default function SeparacaoPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {isLoading ? (
           <LoadingSkeleton />
-        ) : groupedByDate.length === 0 ? (
+        ) : groupedByDate.length === 0 && separacoesSemData.length === 0 ? (
           <EmptyState />
         ) : (
-          groupedByDate.map(({ date, items }) => (
+          <>
+            {separacoesSemData.length > 0 && (
+              <div className="mb-8">
+                <div className="flex items-center gap-3 mb-4 border-b border-border pb-2">
+                  <h2 className="text-xl font-bold text-primary">Aguardando data de entrega</h2>
+                  <span className="bg-muted text-muted-foreground text-xs px-2 py-1 rounded-full font-medium">
+                    {separacoesSemData.length}{' '}
+                    {separacoesSemData.length === 1 ? 'entrega' : 'entregas'}
+                  </span>
+                </div>
+                <div className="space-y-4">
+                  {separacoesSemData.map((separacao) => (
+                    <SeparacaoCard
+                      key={separacao.id}
+                      separacao={separacao}
+                      onStatusChange={handleStatusChange}
+                      onEdit={handleOpenEdit}
+                      onDelete={deleteSeparacao}
+                      onFinalizar={setFinalizarSeparacao}
+                      isHighlighted={separacao.id === highlightedId}
+                      isAdmin={isAdmin}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+            {groupedByDate.map(({ date, items }) => (
             <DateSection
               key={date.toISOString()}
               date={date}
@@ -355,7 +399,8 @@ export default function SeparacaoPage() {
                 />
               ))}
             </DateSection>
-          ))
+            ))}
+          </>
         )}
       </div>
 
