@@ -53,11 +53,13 @@ export default function EntregasFinalizadasPage() {
           return false
         }
         if (searchQuery.trim()) {
-          // SPEC-116: multi-termo em qualquer ordem, sem distinção de
-          // acento — cada palavra digitada precisa aparecer em algum
-          // campo (cliente, obra, endereço ou quem recebeu). Antes só
-          // casava cliente/obra com a frase inteira e era sensível a
-          // acento.
+          // SPEC-116 (achado ao testar ao vivo): a coluna de pessoa
+          // exibida na linha (EntregaFinalizadaRow.tsx) mostra
+          // `gestora_equipe`, não `recebido_por` — buscar pelo nome que
+          // aparece na tela (ex.: "MARINA POUSA") não achava nada antes
+          // desse fix, porque só checava recebido_por. Multi-termo em
+          // qualquer ordem, sem distinção de acento, contra todos os
+          // campos textuais relevantes.
           const normalize = (v: string) =>
             v
               .normalize('NFD')
@@ -67,7 +69,16 @@ export default function EntregasFinalizadasPage() {
             .split(/\s+/)
             .filter(Boolean)
           const haystack = normalize(
-            [e.cliente, e.codigo_obra, e.endereco, e.recebido_por]
+            [
+              e.cliente,
+              e.codigo_obra,
+              e.endereco,
+              e.recebido_por,
+              e.gestora_equipe,
+              e.numero_pedido,
+              e.numero_entrega,
+              e.observacoes,
+            ]
               .filter(Boolean)
               .map(String)
               .join(' '),
@@ -97,7 +108,7 @@ export default function EntregasFinalizadasPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 type="text"
-                placeholder="Buscar por cliente, obra, endereço..."
+                placeholder="Buscar por cliente, obra, endereço, gestora..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10 bg-card border-border"

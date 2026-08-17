@@ -111,7 +111,15 @@ export default function SeparacaoPage() {
           .split(/\s+/)
           .filter(Boolean)
         const haystack = normalize(
-          [s.cliente, s.codigo_obra, s.endereco, s.responsavel_recebimento, s.telefone]
+          [
+            s.cliente,
+            s.codigo_obra,
+            s.endereco_entrega,
+            s.endereco,
+            s.responsavel_recebimento,
+            s.telefone,
+            s.gestora_equipe,
+          ]
             .filter(Boolean)
             .join(' '),
         )

@@ -221,6 +221,7 @@ export default function PendentesPage() {
           p.tipo_problema,
           p.descricao_problema,
           p.registrado_por,
+          (p as any).resolved_by,
         ]
           .filter(Boolean)
           .map(String)
