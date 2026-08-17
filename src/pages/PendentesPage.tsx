@@ -197,15 +197,37 @@ export default function PendentesPage() {
   const { user } = useAuth()
 
   const filterList = (list: EntregaPendente[]) => {
-    if (!searchQuery.trim()) return list
-    const query = searchQuery.toLowerCase()
-    return list.filter(
-      (p) =>
-        (p.cliente || '').toLowerCase().includes(query) ||
-        String(p.codigo_obra || '')
-          .toLowerCase()
-          .includes(query),
-    )
+    const trimmed = searchQuery.trim()
+    if (!trimmed) return list
+    // SPEC-116: multi-termo em qualquer ordem, sem distinção de acento —
+    // cada palavra digitada precisa aparecer em algum campo (cliente,
+    // obra, endereço, responsável, telefone, motivo/descrição do
+    // problema ou quem registrou). Antes só casava cliente/obra com a
+    // frase inteira e era sensível a acento.
+    const normalize = (v: string) =>
+      v
+        .normalize('NFD')
+        .replace(/\p{Diacritic}/gu, '')
+        .toLowerCase()
+    const terms = normalize(trimmed).split(/\s+/).filter(Boolean)
+    return list.filter((p) => {
+      const haystack = normalize(
+        [
+          p.cliente,
+          p.codigo_obra,
+          p.endereco,
+          p.responsavel,
+          p.telefone,
+          p.tipo_problema,
+          p.descricao_problema,
+          p.registrado_por,
+        ]
+          .filter(Boolean)
+          .map(String)
+          .join(' '),
+      )
+      return terms.every((t) => haystack.includes(t))
+    })
   }
 
   const filteredPendentes = filterList(pendentes)
@@ -240,7 +262,7 @@ export default function PendentesPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 type="text"
-                placeholder="Buscar por cliente ou obra..."
+                placeholder="Buscar por cliente, obra, endereço, motivo..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10 bg-card border-border"

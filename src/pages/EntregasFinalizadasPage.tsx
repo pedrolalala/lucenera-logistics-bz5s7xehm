@@ -53,13 +53,26 @@ export default function EntregasFinalizadasPage() {
           return false
         }
         if (searchQuery.trim()) {
-          const query = searchQuery.toLowerCase()
-          return (
-            (e.cliente || '').toLowerCase().includes(query) ||
-            String(e.codigo_obra || '')
+          // SPEC-116: multi-termo em qualquer ordem, sem distinção de
+          // acento — cada palavra digitada precisa aparecer em algum
+          // campo (cliente, obra, endereço ou quem recebeu). Antes só
+          // casava cliente/obra com a frase inteira e era sensível a
+          // acento.
+          const normalize = (v: string) =>
+            v
+              .normalize('NFD')
+              .replace(/\p{Diacritic}/gu, '')
               .toLowerCase()
-              .includes(query)
+          const terms = normalize(searchQuery.trim())
+            .split(/\s+/)
+            .filter(Boolean)
+          const haystack = normalize(
+            [e.cliente, e.codigo_obra, e.endereco, e.recebido_por]
+              .filter(Boolean)
+              .map(String)
+              .join(' '),
           )
+          return terms.every((t) => haystack.includes(t))
         }
         return true
       })
@@ -84,7 +97,7 @@ export default function EntregasFinalizadasPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 type="text"
-                placeholder="Buscar por cliente ou obra..."
+                placeholder="Buscar por cliente, obra, endereço..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10 bg-card border-border"

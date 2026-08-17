@@ -98,10 +98,24 @@ export default function SeparacaoPage() {
       if (clientFilter !== 'todos' && s.cliente !== clientFilter) return false
 
       if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase()
-        const matchesCliente = s.cliente.toLowerCase().includes(query)
-        const matchesObra = s.codigo_obra.toLowerCase().includes(query)
-        if (!matchesCliente && !matchesObra) return false
+        // SPEC-116: multi-termo em qualquer ordem, sem distinção de
+        // acento — cada palavra digitada precisa aparecer em algum campo
+        // (cliente, obra, endereço, responsável ou telefone). Antes só
+        // casava cliente/obra com a frase inteira e era sensível a acento.
+        const normalize = (v: string) =>
+          v
+            .normalize('NFD')
+            .replace(/\p{Diacritic}/gu, '')
+            .toLowerCase()
+        const terms = normalize(searchQuery.trim())
+          .split(/\s+/)
+          .filter(Boolean)
+        const haystack = normalize(
+          [s.cliente, s.codigo_obra, s.endereco, s.responsavel_recebimento, s.telefone]
+            .filter(Boolean)
+            .join(' '),
+        )
+        if (!terms.every((t) => haystack.includes(t))) return false
       }
 
       if (dateRange?.from) {
@@ -278,7 +292,7 @@ export default function SeparacaoPage() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   type="text"
-                  placeholder="Buscar por cliente ou obra..."
+                  placeholder="Buscar por cliente, obra, endereço, responsável..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10 bg-card border-border"
