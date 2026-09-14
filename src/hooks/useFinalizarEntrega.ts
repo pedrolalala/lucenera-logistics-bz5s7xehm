@@ -11,6 +11,11 @@ interface FinalizarData {
   observacoes?: string
   gestora_equipe?: string
   numero_entrega?: string
+  // Achado 2026-09-14 (SPEC-143, verificação da Logística): RegistrarEntregaPage
+  // tem um campo "Data Real da Entrega" editável, mas o insert sempre usava
+  // `new Date()` (agora), ignorando a data escolhida — parâmetro opcional
+  // pra permitir corrigir quando a entrega foi em outro dia.
+  data_entrega_real?: string
 }
 
 export function useFinalizarEntrega() {
@@ -24,7 +29,9 @@ export function useFinalizarEntrega() {
         separacao_id: data.separacao_id,
         cliente: data.cliente,
         codigo_obra: data.codigo_obra,
-        data_entrega_real: new Date().toISOString(),
+        data_entrega_real: data.data_entrega_real
+          ? new Date(data.data_entrega_real).toISOString()
+          : new Date().toISOString(),
         endereco: data.endereco,
         recebido_por: data.recebido_por,
         observacoes: data.observacoes || null,

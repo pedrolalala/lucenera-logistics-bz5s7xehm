@@ -161,12 +161,23 @@ export default function RegistrarEntregaPage() {
       return
     }
 
+    // Achado 2026-09-14: esta chamada mandava um objeto com chaves
+    // (`separacao`, `recebidoPor`, `fotos`, `dataEntrega`) que não batiam
+    // com o que useFinalizarEntrega espera — os campos essenciais
+    // (separacao_id, cliente, codigo_obra, endereco, recebido_por) nunca
+    // eram enviados (viravam `undefined`, removidos do JSON), a entrega
+    // ficava sem nenhum vínculo e a separação nunca era marcada
+    // 'finalizado', mas o toast avisava sucesso mesmo assim.
     const success = await finalizarEntrega({
-      separacao: obraData,
-      recebidoPor: recebidoPor.trim(),
-      fotos,
-      observacoes: observacoes.trim(),
-      dataEntrega,
+      separacao_id: obraData.id,
+      cliente: obraData.cliente,
+      codigo_obra: obraData.codigo_obra,
+      endereco: obraData.endereco_entrega || obraData.endereco || '',
+      recebido_por: recebidoPor.trim(),
+      observacoes: observacoes.trim() || undefined,
+      gestora_equipe: obraData.gestora_equipe || undefined,
+      numero_entrega: obraData.numero_entrega || undefined,
+      data_entrega_real: dataEntrega,
     })
 
     if (success) {
