@@ -68,8 +68,7 @@ export function DayDetails({ selectedDate, dayData, onEditSeparacao, onCreateRou
             return (
               <div
                 key={entrega.id}
-                onDoubleClick={() => onEditSeparacao(entrega)}
-                className="bg-background border border-border rounded-xl p-4 hover:border-primary/40 hover:shadow-md transition-all shadow-sm relative overflow-hidden group cursor-pointer"
+                className="bg-background border border-border rounded-xl p-4 hover:border-primary/40 hover:shadow-md transition-all shadow-sm relative overflow-hidden group"
               >
                 <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${complexityColor}`}></div>
 

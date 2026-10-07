@@ -65,9 +65,7 @@ export default function EntregasFinalizadasPage() {
               .normalize('NFD')
               .replace(/\p{Diacritic}/gu, '')
               .toLowerCase()
-          const terms = normalize(searchQuery.trim())
-            .split(/\s+/)
-            .filter(Boolean)
+          const terms = normalize(searchQuery.trim()).split(/\s+/).filter(Boolean)
           const haystack = normalize(
             [
               e.cliente,

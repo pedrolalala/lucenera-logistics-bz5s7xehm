@@ -36,6 +36,10 @@ const TIPO_PROBLEMA_LABELS: Record<string, string> = {
   outros: '🔴 Outros',
 }
 
+// SPEC-182 (N1): números de venda/orçamento sem o prefixo VENDA-/ORC-.
+const semPrefixo = (texto: string | null | undefined) =>
+  (texto || '').replace(/\b(VENDA|ORC)-(\d)/gi, '$2')
+
 function PendenciaCard({
   pendencia,
   onSolveClick,
@@ -47,15 +51,14 @@ function PendenciaCard({
 }) {
   return (
     <Card
-      onDoubleClick={!isResolved ? onSolveClick : undefined}
-      className={`border-l-[6px] shadow-lg ${isResolved ? 'border-l-success opacity-90' : 'border-l-destructive cursor-pointer'}`}
+      className={`border-l-[6px] shadow-lg ${isResolved ? 'border-l-success opacity-90' : 'border-l-destructive'}`}
     >
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div>
             <CardTitle className="text-lg font-bold flex items-center gap-2">
               <span className={isResolved ? 'text-success' : 'text-destructive'}>
-                #{pendencia.codigo_obra}
+                #{semPrefixo(pendencia.codigo_obra)}
               </span>
               {isResolved ? (
                 <Badge variant="outline" className="border-success text-success">
@@ -96,7 +99,7 @@ function PendenciaCard({
           <p className="text-base font-semibold text-destructive mb-1">
             {TIPO_PROBLEMA_LABELS[pendencia.tipo_problema] || pendencia.tipo_problema}
           </p>
-          <p className="text-sm text-foreground">{pendencia.descricao_problema}</p>
+          <p className="text-sm text-foreground">{semPrefixo(pendencia.descricao_problema)}</p>
         </div>
 
         {/* Resolução (se resolvida) */}

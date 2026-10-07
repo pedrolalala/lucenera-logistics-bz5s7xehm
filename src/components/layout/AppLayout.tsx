@@ -23,6 +23,8 @@ import { useToast } from '@/hooks/use-toast'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Separator } from '@/components/ui/separator'
 import { ChangePasswordModal } from '@/components/auth/ChangePasswordModal'
+import { SystemSwitcher } from '@/components/SystemSwitcher'
+import { AvisoSeparacaoCancelada } from '@/components/AvisoSeparacaoCancelada'
 
 interface AppLayoutProps {
   children: ReactNode
@@ -203,6 +205,9 @@ export function AppLayout({ children }: AppLayoutProps) {
       <main className="flex-1">{children}</main>
 
       <ChangePasswordModal open={showChangePassword} onClose={() => setShowChangePassword(false)} />
+      <SystemSwitcher currentSlug="logistica" />
+      {/* SPEC-182 (D12): aviso de separação cancelada (não para entregador). */}
+      {!isEntregador && <AvisoSeparacaoCancelada />}
     </div>
   )
 }

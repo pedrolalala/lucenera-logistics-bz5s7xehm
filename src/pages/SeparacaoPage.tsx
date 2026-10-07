@@ -100,16 +100,15 @@ export default function SeparacaoPage() {
       if (searchQuery.trim()) {
         // SPEC-116: multi-termo em qualquer ordem, sem distinção de
         // acento — cada palavra digitada precisa aparecer em algum campo
-        // (cliente, obra, endereço, responsável ou telefone). Antes só
-        // casava cliente/obra com a frase inteira e era sensível a acento.
+        // (cliente, obra, endereço, responsável, telefone ou gestora).
+        // Antes só casava cliente/obra com a frase inteira e era
+        // sensível a acento.
         const normalize = (v: string) =>
           v
             .normalize('NFD')
             .replace(/\p{Diacritic}/gu, '')
             .toLowerCase()
-        const terms = normalize(searchQuery.trim())
-          .split(/\s+/)
-          .filter(Boolean)
+        const terms = normalize(searchQuery.trim()).split(/\s+/).filter(Boolean)
         const haystack = normalize(
           [
             s.cliente,
@@ -397,30 +396,30 @@ export default function SeparacaoPage() {
               </div>
             )}
             {groupedByDate.map(({ date, items }) => (
-            <DateSection
-              key={date.toISOString()}
-              date={date}
-              count={items.length}
-              onCreateRoute={() =>
-                handleCreateRoute(
-                  date,
-                  items.filter((s) => s.tipo_entrega !== 'cliente_retira'),
-                )
-              }
-            >
-              {items.map((separacao) => (
-                <SeparacaoCard
-                  key={separacao.id}
-                  separacao={separacao}
-                  onStatusChange={handleStatusChange}
-                  onEdit={handleOpenEdit}
-                  onDelete={deleteSeparacao}
-                  onFinalizar={setFinalizarSeparacao}
-                  isHighlighted={separacao.id === highlightedId}
-                  isAdmin={isAdmin}
-                />
-              ))}
-            </DateSection>
+              <DateSection
+                key={date.toISOString()}
+                date={date}
+                count={items.length}
+                onCreateRoute={() =>
+                  handleCreateRoute(
+                    date,
+                    items.filter((s) => s.tipo_entrega !== 'cliente_retira'),
+                  )
+                }
+              >
+                {items.map((separacao) => (
+                  <SeparacaoCard
+                    key={separacao.id}
+                    separacao={separacao}
+                    onStatusChange={handleStatusChange}
+                    onEdit={handleOpenEdit}
+                    onDelete={deleteSeparacao}
+                    onFinalizar={setFinalizarSeparacao}
+                    isHighlighted={separacao.id === highlightedId}
+                    isAdmin={isAdmin}
+                  />
+                ))}
+              </DateSection>
             ))}
           </>
         )}

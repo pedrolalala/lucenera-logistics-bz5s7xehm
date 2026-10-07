@@ -8,7 +8,7 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { user, isLoading } = useAuth()
+  const { user, isLoading, hasAccess } = useAuth()
   const location = useLocation()
 
   if (isLoading) {
@@ -25,6 +25,20 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   if (!user) {
     // Save the attempted URL for redirecting after login
     return <Navigate to="/login" state={{ from: location }} replace />
+  }
+
+  if (hasAccess === false) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <div className="max-w-sm w-full text-center space-y-3">
+          <h1 className="text-lg font-semibold">Acesso negado</h1>
+          <p className="text-sm text-muted-foreground">
+            Sua conta não tem permissão para acessar o Sistema de Entregas. Fale com um
+            administrador se acredita que isso é um engano.
+          </p>
+        </div>
+      </div>
+    )
   }
 
   return <>{children}</>

@@ -251,9 +251,12 @@ export function SeparacaoCard({
                     {/* Fix: numero_venda é `text` no banco (não array) para
                         separações vindas da Separação Parcial — .join()
                         quebrava a tela inteira nesses casos. */}
-                    {Array.isArray(separacao.numero_venda)
-                      ? separacao.numero_venda.join(', ')
-                      : separacao.numero_venda || 'N/A'}
+                    {/* SPEC-182 (N1): número sem prefixo VENDA-/ORC-. */}
+                    {String(
+                      Array.isArray(separacao.numero_venda)
+                        ? separacao.numero_venda.join(', ')
+                        : separacao.numero_venda || 'N/A',
+                    ).replace(/\b(VENDA|ORC)-(\d)/gi, '$2')}
                   </span>
                 </p>
                 <p>
