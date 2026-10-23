@@ -6,6 +6,7 @@ import {
   Settings,
   Code2,
   ScrollText,
+  Timer,
   ArrowLeft,
   Menu,
   X,
@@ -46,7 +47,8 @@ export function AdminLayout({ children }: { children: ReactNode }) {
       badgeText: 'DEV',
       badgeColor: 'bg-yellow-500 text-yellow-950',
     },
-    { label: 'Logs de Auditoria', href: '/admin/logs', icon: ScrollText },
+    { label: 'Métricas', href: '/admin/metricas', icon: Timer },
+    { label: 'Registro de log', href: '/admin/logs', icon: ScrollText },
   ]
 
   const handleLogout = async () => {

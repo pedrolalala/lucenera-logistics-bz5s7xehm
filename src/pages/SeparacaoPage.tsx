@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react'
-import { Plus, CalendarDays, Search, ShieldCheck } from 'lucide-react'
+import { Plus, CalendarDays, Search, ShieldCheck, RefreshCw, Ban } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { DateRange } from 'react-day-picker'
 import { AppLayout } from '@/components/layout/AppLayout'
@@ -19,6 +19,7 @@ import { LoadingSkeleton } from '@/components/separacao/LoadingSkeleton'
 import { SeparacaoFormModal } from '@/components/separacao/SeparacaoFormModal'
 import { CreateRouteModal } from '@/components/separacao/CreateRouteModal'
 import { FinalizarEntregaModal } from '@/components/separacao/FinalizarEntregaModal'
+import { RecusarModal } from '@/components/separacao/RecusarModal'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
@@ -26,27 +27,21 @@ import { Label } from '@/components/ui/label'
 import { useSeparacoes, Separacao } from '@/hooks/useSeparacoes'
 import { FiltroSegmento, StatusSeparacao } from '@/types/separacao'
 import { useUserRole } from '@/hooks/useUserRole'
-import {
-  format,
-  subDays,
-  subMonths,
-  isAfter,
-  isBefore,
-  startOfDay,
-  parseISO,
-  isEqual,
-  eachDayOfInterval,
-} from 'date-fns'
+import { subDays, subMonths, isAfter, isBefore, startOfDay, parseISO, isEqual } from 'date-fns'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Package, Scissors, PackageCheck } from 'lucide-react'
 
 export default function SeparacaoPage() {
   const navigate = useNavigate()
-  const { separacoes, isLoading, updateStatus, deleteSeparacao, refetch } = useSeparacoes()
+  const { separacoes, isLoading, updateStatus, recusarSeparacao, deleteSeparacao, refetch } =
+    useSeparacoes()
   const { isAdmin } = useUserRole()
   const [filtro, setFiltro] = useState<FiltroSegmento>('todas')
   const [statusFilter, setStatusFilter] = useState<'todos' | StatusSeparacao>('todos')
-  const [tipoPedidoFilter, setTipoPedidoFilter] = useState<'todos' | 'normal' | 'garantia'>('todos')
+  const [tipoPedidoFilter, setTipoPedidoFilter] = useState<
+    'todos' | 'normal' | 'garantia' | 'devolucao'
+  >('todos')
+  const [recusarSep, setRecusarSep] = useState<Separacao | null>(null)
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
   const [searchQuery, setSearchQuery] = useState('')
   const [clientFilter, setClientFilter] = useState<string>('todos')
@@ -69,6 +64,11 @@ export default function SeparacaoPage() {
     }
   }, [highlightedId])
 
+  const qtdRecusados = useMemo(
+    () => separacoes.filter((s) => s.status === 'recusado').length,
+    [separacoes],
+  )
+
   const uniqueClients = useMemo(() => {
     const clients = new Set(separacoes.map((s) => s.cliente).filter(Boolean))
     return Array.from(clients).sort()
@@ -83,13 +83,21 @@ export default function SeparacaoPage() {
       // 'Pronto') — parseISO(null) quebrava a página inteira.
       const entregaDate = s.data_entrega ? startOfDay(parseISO(s.data_entrega)) : null
 
-      if (statusFilter !== 'todos' && s.status !== statusFilter) return false
+      // SPEC-226: recusados só aparecem na aba própria (saem da fila do estoque)
+      if (statusFilter === 'todos' && s.status === 'recusado') return false
+      if (statusFilter === 'separado' && s.status === 'Pronto') {
+        // 'Pronto' (Separação Parcial) também é separado
+      } else if (statusFilter !== 'todos' && s.status !== statusFilter) return false
 
       if (tipoPedidoFilter !== 'todos') {
         const tipo = s.tipo_pedido || 'normal'
         if (tipoPedidoFilter === 'garantia' && tipo !== 'garantia' && !s.inclui_garantia)
           return false
-        if (tipoPedidoFilter === 'normal' && (tipo === 'garantia' || s.inclui_garantia))
+        if (tipoPedidoFilter === 'devolucao' && !s.inclui_devolucao) return false
+        if (
+          tipoPedidoFilter === 'normal' &&
+          (tipo === 'garantia' || s.inclui_garantia || s.inclui_devolucao)
+        )
           return false
       }
 
@@ -118,6 +126,10 @@ export default function SeparacaoPage() {
             s.responsavel_recebimento,
             s.telefone,
             s.gestora_equipe,
+            // SPEC-226 A5: também por quem pediu, nº da venda e nº da entrega
+            s.solicitante,
+            Array.isArray(s.numero_venda) ? s.numero_venda.join(' ') : s.numero_venda,
+            s.numero_entrega,
           ]
             .filter(Boolean)
             .join(' '),
@@ -181,31 +193,15 @@ export default function SeparacaoPage() {
     [filteredSeparacoes],
   )
 
+  // SPEC-226 A4 (reunião 08/10): cada pedido aparece uma vez só, no dia da
+  // entrega. Antes o "Em separação" se repetia em todos os dias até a entrega
+  // e poluía a tela — o andamento se acompanha pelas abas.
   const groupedByDate = useMemo(() => {
     const groups: { [key: string]: Separacao[] } = {}
-    const today = startOfDay(new Date())
-
-    const addToGroup = (dateKey: string, s: Separacao) => {
-      if (!groups[dateKey]) groups[dateKey] = []
-      if (!groups[dateKey].some((existing) => existing.id === s.id)) {
-        groups[dateKey].push(s)
-      }
-    }
-
     separacoesComData.forEach((s) => {
-      if (s.status === 'em_separacao' && s.data_inicio_separacao) {
-        const statusChangedAt = startOfDay(parseISO(s.data_inicio_separacao))
-        const deliveryDate = startOfDay(parseISO(s.data_entrega))
-        const rangeStart = isAfter(statusChangedAt, today) ? today : statusChangedAt
-        if (!isAfter(rangeStart, deliveryDate)) {
-          const days = eachDayOfInterval({ start: rangeStart, end: deliveryDate })
-          days.forEach((day) => addToGroup(format(day, 'yyyy-MM-dd'), s))
-        } else {
-          addToGroup(s.data_entrega, s)
-        }
-      } else {
-        addToGroup(s.data_entrega, s)
-      }
+      const dateKey = s.data_entrega.split('T')[0]
+      if (!groups[dateKey]) groups[dateKey] = []
+      groups[dateKey].push(s)
     })
 
     return Object.entries(groups)
@@ -263,6 +259,17 @@ export default function SeparacaoPage() {
                   <span className="hidden sm:inline">Nova Separação</span>
                   <span className="sm:hidden">Nova</span>
                 </Button>
+                {/* SPEC-226 A1: atualizar manual (sem automático, para não atrapalhar quem está mexendo) */}
+                <Button
+                  variant="outline"
+                  onClick={() => refetch()}
+                  disabled={isLoading}
+                  className="gap-2"
+                  title="Buscar solicitações novas"
+                >
+                  <RefreshCw className={isLoading ? 'w-4 h-4 animate-spin' : 'w-4 h-4'} />
+                  <span className="hidden sm:inline">Atualizar</span>
+                </Button>
                 <Button variant="outline" onClick={() => navigate('/calendario')} className="gap-2">
                   <CalendarDays className="w-4 h-4" />
                   <span className="hidden sm:inline">Ver em Calendário</span>
@@ -283,13 +290,22 @@ export default function SeparacaoPage() {
                     <Package className="w-3.5 h-3.5" />
                     <span className="hidden sm:inline">Solicitado</span>
                   </TabsTrigger>
-                  <TabsTrigger value="em_separacao" className="text-xs px-3 gap-1.5">
+                  <TabsTrigger value="Em separação" className="text-xs px-3 gap-1.5">
                     <Scissors className="w-3.5 h-3.5" />
                     <span className="hidden sm:inline">Em Separação</span>
                   </TabsTrigger>
                   <TabsTrigger value="separado" className="text-xs px-3 gap-1.5">
                     <PackageCheck className="w-3.5 h-3.5" />
                     <span className="hidden sm:inline">Separado</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="recusado" className="text-xs px-3 gap-1.5">
+                    <Ban className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Recusados</span>
+                    {qtdRecusados > 0 && (
+                      <span className="ml-0.5 rounded-full bg-red-600 text-white text-[10px] px-1.5">
+                        {qtdRecusados}
+                      </span>
+                    )}
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
@@ -344,6 +360,7 @@ export default function SeparacaoPage() {
                   <SelectItem value="todos">Todos os tipos</SelectItem>
                   <SelectItem value="normal">Normal</SelectItem>
                   <SelectItem value="garantia">Garantia</SelectItem>
+                  <SelectItem value="devolucao">Devolução</SelectItem>
                 </SelectContent>
               </Select>
               <DateRangePicker
@@ -388,6 +405,7 @@ export default function SeparacaoPage() {
                       onEdit={handleOpenEdit}
                       onDelete={deleteSeparacao}
                       onFinalizar={setFinalizarSeparacao}
+                      onRecusar={isAdmin ? setRecusarSep : undefined}
                       isHighlighted={separacao.id === highlightedId}
                       isAdmin={isAdmin}
                     />
@@ -415,6 +433,7 @@ export default function SeparacaoPage() {
                     onEdit={handleOpenEdit}
                     onDelete={deleteSeparacao}
                     onFinalizar={setFinalizarSeparacao}
+                    onRecusar={isAdmin ? setRecusarSep : undefined}
                     isHighlighted={separacao.id === highlightedId}
                     isAdmin={isAdmin}
                   />
@@ -446,6 +465,12 @@ export default function SeparacaoPage() {
         onClose={() => setFinalizarSeparacao(null)}
         separacao={finalizarSeparacao}
         onSuccess={handleFinalizarSuccess}
+      />
+
+      <RecusarModal
+        separacao={recusarSep}
+        onClose={() => setRecusarSep(null)}
+        onConfirm={recusarSeparacao}
       />
     </AppLayout>
   )

@@ -82,8 +82,12 @@ export default function RegistrarEntregaPage() {
         return
       }
 
-      // Check status - allow 'separado' and 'em_separacao'
-      const allowedStatuses = ['separado', 'em_separacao', 'matheus_separacao_garantia']
+      if (separacao.status === 'recusado') {
+        setValidationState('error')
+        setErrorMessage('⚠️ Esta solicitação foi recusada pelo estoque e ainda não foi reenviada.')
+        setObraData(null)
+        return
+      }
 
       if (separacao.status === 'material_solicitado') {
         setValidationState('error')
@@ -111,7 +115,9 @@ export default function RegistrarEntregaPage() {
       // Success - obra found and status is valid
       setValidationState('success')
       setObraData(separacao)
-      setRecebidoPor(separacao.responsavel_recebimento)
+      // SPEC-226 E1 (reunião 08/10): quem recebeu de fato começa vazio e é obrigatório;
+      // com quem foi combinado (responsavel_recebimento) é guardado à parte.
+      setRecebidoPor('')
       setTelefoneContato(separacao.telefone || '')
       setQuemEntregou('Alexandre')
 
@@ -174,6 +180,9 @@ export default function RegistrarEntregaPage() {
       codigo_obra: obraData.codigo_obra,
       endereco: obraData.endereco_entrega || obraData.endereco || '',
       recebido_por: recebidoPor.trim(),
+      entregue_por: quemEntregou.trim(),
+      combinado_com: obraData.responsavel_recebimento || undefined,
+      fotos,
       observacoes: observacoes.trim() || undefined,
       gestora_equipe: obraData.gestora_equipe || undefined,
       numero_entrega: obraData.numero_entrega || undefined,
@@ -300,7 +309,17 @@ export default function RegistrarEntregaPage() {
           )}
 
           {/* Step 5: Receiver Confirmation */}
-          {obraData && <ReceiverInput value={recebidoPor} onChange={setRecebidoPor} />}
+          {obraData && (
+            <div className="space-y-2">
+              {obraData.responsavel_recebimento && (
+                <p className="text-sm text-muted-foreground px-1">
+                  Combinado com: <b className="text-foreground">{obraData.responsavel_recebimento}</b>{' '}
+                  — escreva abaixo quem <b>de fato</b> recebeu.
+                </p>
+              )}
+              <ReceiverInput value={recebidoPor} onChange={setRecebidoPor} />
+            </div>
+          )}
 
           {/* Step 6: Telefone (editable) */}
           {obraData && (

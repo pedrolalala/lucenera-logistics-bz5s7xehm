@@ -46,6 +46,7 @@ export function FinalizarEntregaModal({
       codigo_obra: separacao.codigo_obra,
       endereco: separacao.endereco_entrega || separacao.endereco || '',
       recebido_por: recebidoPor.trim(),
+      combinado_com: separacao.responsavel_recebimento || undefined,
       observacoes: observacoes.trim() || undefined,
       gestora_equipe: separacao.gestora_equipe || undefined,
       numero_entrega: separacao.numero_entrega || undefined,
@@ -69,6 +70,11 @@ export function FinalizarEntregaModal({
           <div className="space-y-1">
             <Label className="text-xs font-bold text-muted-foreground">CLIENTE</Label>
             <p className="text-sm font-medium text-foreground">{separacao?.cliente}</p>
+            {separacao?.responsavel_recebimento && (
+              <p className="text-xs text-muted-foreground">
+                Combinado com: {separacao.responsavel_recebimento}
+              </p>
+            )}
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs font-bold text-muted-foreground">RECEBIDO POR *</Label>

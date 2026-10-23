@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
-import { Search, AlertCircle, RefreshCw } from 'lucide-react'
+import { Search, AlertCircle, RefreshCw, Printer } from 'lucide-react'
+import { registrarEvento } from '@/lib/logistica'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { FilterDropdown } from '@/components/ui/filter-dropdown'
 import { EntregaFinalizadaRow } from '@/components/finalizadas/EntregaFinalizadaRow'
@@ -72,6 +73,8 @@ export default function EntregasFinalizadasPage() {
               e.codigo_obra,
               e.endereco,
               e.recebido_por,
+              e.combinado_com,
+              e.entregue_por,
               e.gestora_equipe,
               e.numero_pedido,
               e.numero_entrega,
@@ -92,6 +95,39 @@ export default function EntregasFinalizadasPage() {
       })
   }, [entregas, filtro, searchQuery])
 
+  // SPEC-226 F2: imprimir / salvar em PDF a lista (com os filtros aplicados)
+  const imprimirLista = () => {
+    const esc = (v: unknown) =>
+      String(v ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+    const linhas = filteredEntregas
+      .map(
+        (e) => `<tr>
+<td>${e.data_entrega_real ? format(parseISO(e.data_entrega_real), 'dd/MM/yyyy') : '—'}</td>
+<td>${esc(e.numero_entrega || '')}</td><td>${esc(e.codigo_obra)}</td><td>${esc(e.cliente)}</td>
+<td>${esc(e.combinado_com || '')}</td><td>${esc(e.recebido_por || '')}</td>
+<td>${esc(e.entregue_por || '')}</td><td>${esc(e.gestora_equipe || '')}</td></tr>`,
+      )
+      .join('')
+    const w = window.open('', '_blank')
+    if (!w) return
+    w.document.open()
+    w.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
+<title>Entregas finalizadas</title><style>
+body{font-family:Arial,sans-serif;font-size:11px;margin:16px} h1{font-size:16px;margin:0 0 4px}
+table{border-collapse:collapse;width:100%} th,td{border:1px solid #bbb;padding:4px 6px;text-align:left}
+th{background:#f2f2f2} @media print{body{margin:8mm}}
+</style></head><body>
+<h1>Entregas finalizadas (${filteredEntregas.length})</h1>
+<div>${searchQuery ? `Busca: ${esc(searchQuery)} · ` : ''}Impresso em ${format(new Date(), 'dd/MM/yyyy HH:mm')}</div><br>
+<table><tr><th>Data</th><th>Nº entrega</th><th>Obra</th><th>Cliente</th><th>Combinado com</th><th>Recebido por</th><th>Entregue por</th><th>Gestora</th></tr>
+${linhas}</table><script>window.onload=function(){window.print()}</script></body></html>`)
+    w.document.close()
+    registrarEvento('exportou', null, `Lista de finalizadas (${filteredEntregas.length})`)
+  }
+
   return (
     <AppLayout>
       {/* Page Header */}
@@ -100,7 +136,18 @@ export default function EntregasFinalizadasPage() {
           <div className="flex flex-col gap-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <h1 className="text-2xl font-bold text-success">Entregas Finalizadas</h1>
-              <FilterDropdown value={filtro} onChange={setFiltro} />
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  onClick={imprimirLista}
+                  disabled={filteredEntregas.length === 0}
+                  className="gap-2"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span className="hidden sm:inline">Imprimir / PDF</span>
+                </Button>
+                <FilterDropdown value={filtro} onChange={setFiltro} />
+              </div>
             </div>
             <div className="relative max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />

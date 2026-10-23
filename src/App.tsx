@@ -26,6 +26,7 @@ const AdminUsersPage = lazy(() => import('./pages/admin/AdminUsersPage'))
 const AdminSettingsPage = lazy(() => import('./pages/admin/AdminSettingsPage'))
 const AdminDevPage = lazy(() => import('./pages/admin/AdminDevPage'))
 const AdminLogsPage = lazy(() => import('./pages/admin/AdminLogsPage'))
+const AdminMetricasPage = lazy(() => import('./pages/admin/AdminMetricasPage'))
 const NotFound = lazy(() => import('./pages/NotFound'))
 
 const queryClient = new QueryClient()
@@ -138,6 +139,14 @@ const App = () => (
                 element={
                   <AdminRoute>
                     <AdminDevPage />
+                  </AdminRoute>
+                }
+              />
+              <Route
+                path="/admin/metricas"
+                element={
+                  <AdminRoute>
+                    <AdminMetricasPage />
                   </AdminRoute>
                 }
               />

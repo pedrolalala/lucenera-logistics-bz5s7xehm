@@ -3,6 +3,8 @@ import { ptBR } from 'date-fns/locale'
 import { CalendarDays, Route, Edit, Package, MapPin } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { TiposPedidoBadges } from '@/components/separacao/TiposPedidoBadges'
+import { COMPLEXIDADE_LABEL } from '@/lib/logistica'
 
 export function DayDetails({ selectedDate, dayData, onEditSeparacao, onCreateRoute }: any) {
   if (!selectedDate) {
@@ -61,9 +63,14 @@ export function DayDetails({ selectedDate, dayData, onEditSeparacao, onCreateRou
                     ? 'bg-red-500'
                     : 'bg-gray-300'
 
-            const statusLabel = entrega.status
-              ? entrega.status.replace(/_/g, ' ').toUpperCase()
-              : 'DESCONHECIDO'
+            const STATUS: Record<string, string> = {
+              material_solicitado: 'Solicitado',
+              'Em separação': 'Em separação',
+              separado: 'Separado',
+              Pronto: 'Separado',
+            }
+            const statusLabel = STATUS[entrega.status] || entrega.status || '—'
+            const compLabel = COMPLEXIDADE_LABEL[entrega.nivel_complexidade] || 'Sem complexidade'
 
             return (
               <div
@@ -79,12 +86,22 @@ export function DayDetails({ selectedDate, dayData, onEditSeparacao, onCreateRou
                         <h4 className="font-bold text-foreground text-sm">
                           {entrega.codigo_obra || 'Sem Código'}
                         </h4>
-                        <Badge
-                          variant="secondary"
-                          className="text-[9px] font-mono py-0 h-4.5 px-1.5 uppercase tracking-wider"
+                        <span
+                          className={`text-[10px] font-bold text-white rounded px-1.5 ${complexityColor}`}
                         >
+                          {compLabel}
+                        </span>
+                        <Badge variant="secondary" className="text-[10px] py-0 h-4.5 px-1.5">
                           {statusLabel}
                         </Badge>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        <TiposPedidoBadges separacao={entrega} />
+                        {entrega.delivery_type === 'scheduled' && (
+                          <span className="text-[10px] font-bold border rounded px-1.5">
+                            Hora marcada {entrega.scheduled_time?.slice(0, 5) || ''}
+                          </span>
+                        )}
                       </div>
                       <p className="text-xs text-muted-foreground font-medium">
                         {entrega.cliente || 'Cliente não informado'}

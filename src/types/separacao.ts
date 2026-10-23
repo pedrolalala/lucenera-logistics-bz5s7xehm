@@ -10,6 +10,8 @@ export type StatusSeparacao =
   // Logística incluía esse valor nos filtros, então essas separações
   // nunca apareciam pro Matheus.
   | 'Pronto'
+  // SPEC-226: recusado pelo estoque (motivo em motivo_recusa); quem pediu corrige e reenvia
+  | 'recusado'
 
 export type NivelComplexidade = 'facil' | 'medio' | 'dificil'
 

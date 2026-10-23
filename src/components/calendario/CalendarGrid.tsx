@@ -20,37 +20,14 @@ interface CalendarGridProps {
   isLoading: boolean
 }
 
-function getGroupStyle(complexity: string, status: string) {
-  let colorClasses = {
-    solid: 'bg-gray-500 text-white border-gray-600',
-    light: 'bg-gray-100 text-gray-700 border-gray-400',
-    outline: 'bg-transparent text-gray-600 border-gray-400 border-2',
-  }
-
-  if (complexity === 'facil') {
-    colorClasses = {
-      solid: 'bg-green-500 text-white border-green-600',
-      light: 'bg-green-100 text-green-700 border-green-400',
-      outline: 'bg-transparent text-green-600 border-green-500 border-2',
-    }
-  } else if (complexity === 'medio') {
-    colorClasses = {
-      solid: 'bg-orange-500 text-white border-orange-600',
-      light: 'bg-orange-100 text-orange-700 border-orange-400',
-      outline: 'bg-transparent text-orange-600 border-orange-500 border-2',
-    }
-  } else if (complexity === 'dificil') {
-    colorClasses = {
-      solid: 'bg-red-500 text-white border-red-600',
-      light: 'bg-red-100 text-red-700 border-red-400',
-      outline: 'bg-transparent text-red-600 border-red-500 border-2',
-    }
-  }
-
-  if (status === 'separado' || status === 'finalizado') return colorClasses.solid
-  if (status === 'Em separação') return colorClasses.light
-  return colorClasses.outline
-}
+// SPEC-226 D: o calendário mostra só as entregas do dia (pela data da entrega),
+// com a quantidade e a complexidade — sem misturar status de separação.
+const COMP = [
+  { key: 'facil', letra: 'F', label: 'Fácil', cls: 'bg-green-500 text-white' },
+  { key: 'medio', letra: 'M', label: 'Médio', cls: 'bg-orange-500 text-white' },
+  { key: 'dificil', letra: 'C', label: 'Complexo', cls: 'bg-red-500 text-white' },
+  { key: 'none', letra: '?', label: 'Sem complexidade', cls: 'bg-gray-400 text-white' },
+]
 
 export function CalendarGrid({
   currentMonth,
@@ -91,26 +68,12 @@ export function CalendarGrid({
             const isCurrentMonth = isSameMonth(day, currentMonth)
             const isToday = isSameDay(day, new Date())
 
-            // Group deliveries by complexity and status
-            const groups: Record<string, { count: number; complexity: string; status: string }> = {}
-            if (dayData?.entregas) {
-              dayData.entregas.forEach((e) => {
-                const comp = e.nivel_complexidade || 'none'
-                const stat = e.status || 'none'
-                const key = `${comp}-${stat}`
-                if (!groups[key]) {
-                  groups[key] = { count: 0, complexity: comp, status: stat }
-                }
-                groups[key].count += 1
-              })
-            }
-
-            const sortedGroups = Object.values(groups).sort((a, b) => {
-              const order = { facil: 1, medio: 2, dificil: 3, none: 4 }
-              const aOrder = order[a.complexity as keyof typeof order] || 5
-              const bOrder = order[b.complexity as keyof typeof order] || 5
-              return aOrder - bOrder
+            const porComp: Record<string, number> = {}
+            dayData?.entregas?.forEach((e) => {
+              const k = COMP.some((c) => c.key === e.nivel_complexidade) ? e.nivel_complexidade : 'none'
+              porComp[k] = (porComp[k] || 0) + 1
             })
+            const total = dayData?.total || 0
 
             return (
               <button
@@ -135,20 +98,31 @@ export function CalendarGrid({
                   {format(day, 'd')}
                 </span>
 
-                <div className="flex flex-wrap justify-center gap-1 w-full mt-1 px-1">
-                  {sortedGroups.map((g, i) => (
-                    <div
-                      key={i}
-                      className={cn(
-                        'w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[10px] sm:text-xs font-bold shadow-sm transition-transform hover:scale-110',
-                        getGroupStyle(g.complexity, g.status),
-                      )}
-                      title={`${g.count} entrega(s) - ${g.complexity.toUpperCase()} / ${g.status.replace(/_/g, ' ').toUpperCase()}`}
-                    >
-                      {g.count}
+                {total > 0 && (
+                  <>
+                    <span className="text-[10px] sm:text-xs font-bold text-foreground leading-none">
+                      {total}
+                      <span className="hidden sm:inline">
+                        {total === 1 ? ' entrega' : ' entregas'}
+                      </span>
+                    </span>
+                    <div className="flex flex-wrap justify-center gap-0.5 sm:gap-1 w-full mt-1 px-0.5">
+                      {COMP.filter((c) => porComp[c.key]).map((c) => (
+                        <span
+                          key={c.key}
+                          className={cn(
+                            'rounded px-1 text-[9px] sm:text-[11px] font-bold leading-4',
+                            c.cls,
+                          )}
+                          title={`${porComp[c.key]} ${c.label}`}
+                        >
+                          {porComp[c.key]}
+                          {c.letra}
+                        </span>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </>
+                )}
               </button>
             )
           })}

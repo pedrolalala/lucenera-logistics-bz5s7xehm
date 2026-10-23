@@ -19,11 +19,19 @@ import {
   Clock,
   FileCheck,
   Paperclip,
+  Printer,
+  Ban,
+  ShieldCheck,
+  Undo2,
+  Send,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { SeparacaoFiles } from '@/components/separacao/SeparacaoFiles'
 import { SeparacaoItensList } from '@/components/separacao/SeparacaoItensList'
+import { TiposPedidoBadges } from '@/components/separacao/TiposPedidoBadges'
+import { useToast } from '@/hooks/use-toast'
+import { COMPLEXIDADE_LABEL, imprimirSolicitacao, isDevolucao } from '@/lib/logistica'
 
 interface SeparacaoCardProps {
   separacao: Separacao
@@ -31,6 +39,7 @@ interface SeparacaoCardProps {
   onEdit: (separacao: Separacao) => void
   onDelete: (id: string) => void
   onFinalizar: (separacao: Separacao) => void
+  onRecusar?: (separacao: Separacao) => void
   isHighlighted?: boolean
   isAdmin?: boolean
 }
@@ -41,21 +50,30 @@ export function SeparacaoCard({
   onEdit,
   onDelete,
   onFinalizar,
+  onRecusar,
   isHighlighted,
   isAdmin,
 }: SeparacaoCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
+  const { toast } = useToast()
 
-  const isSeparado = separacao.status === 'separado'
+  // SPEC-226: 'Pronto' (Separação Parcial com a venda 100% separada) conta como separado.
+  const isSeparado = separacao.status === 'separado' || separacao.status === 'Pronto'
   const isSolicitado = separacao.status === 'material_solicitado'
+  const isRecusado = separacao.status === 'recusado'
   const isGarantia = separacao.tipo_pedido === 'garantia' || separacao.inclui_garantia
+  const isDevol = isDevolucao(separacao)
   const deliveryType = separacao.delivery_type || 'flexible'
   const isScheduled = deliveryType === 'scheduled'
   const enderecoDisplay = separacao.endereco_entrega || separacao.endereco || 'N/A'
 
   let cardBorderClasses = 'border border-border border-l-[6px]'
-  if (isGarantia) {
-    cardBorderClasses = 'border-orange-300 border-l-orange-500 border-l-[6px]'
+  if (isRecusado) {
+    cardBorderClasses = 'border-dashed border-red-300 border-l-red-600 border-l-[6px]'
+  } else if (isDevol) {
+    cardBorderClasses = 'border-red-300 border-l-red-500 border-l-[6px]'
+  } else if (isGarantia) {
+    cardBorderClasses = 'border-yellow-300 border-l-yellow-500 border-l-[6px]'
   } else if (isSeparado) {
     cardBorderClasses = 'border-border border-l-[#10c98f] border-l-[6px]'
   } else if (isSolicitado) {
@@ -64,10 +82,11 @@ export function SeparacaoCard({
     cardBorderClasses = 'border-border border-l-blue-500 border-l-[6px]'
   }
 
+  // SPEC-226 A6: complexidade escrita por extenso (Fácil / Médio / Complexo)
   const complexityConfig = {
-    facil: { label: 'FÁCIL', color: 'bg-green-100 text-green-700 border-green-200' },
-    medio: { label: 'MÉDIO', color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
-    dificil: { label: 'DIFÍCIL', color: 'bg-red-100 text-red-700 border-red-200' },
+    facil: { label: COMPLEXIDADE_LABEL.facil, color: 'bg-green-100 text-green-700 border-green-200' },
+    medio: { label: COMPLEXIDADE_LABEL.medio, color: 'bg-orange-100 text-orange-700 border-orange-200' },
+    dificil: { label: COMPLEXIDADE_LABEL.dificil, color: 'bg-red-100 text-red-700 border-red-200' },
   }
 
   const comp = separacao.nivel_complexidade || 'medio'
@@ -89,7 +108,11 @@ export function SeparacaoCard({
       <div className="p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex flex-col sm:flex-row sm:items-center gap-4 flex-1 w-full">
           <div className="flex flex-wrap items-center gap-2 shrink-0 md:max-w-[320px]">
-            {isSeparado ? (
+            {isRecusado ? (
+              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-semibold border border-red-600 text-red-700 bg-red-50">
+                <Ban className="w-3.5 h-3.5" /> Recusado
+              </div>
+            ) : isSeparado ? (
               <div className="flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-semibold border border-[#10c98f] text-[#10c98f] bg-[#10c98f]/10">
                 <Check className="w-3.5 h-3.5" /> Separado
               </div>
@@ -108,16 +131,14 @@ export function SeparacaoCard({
                 compData.color,
               )}
             >
-              {compData.label}
+              <Circle className="w-2.5 h-2.5 fill-current" /> {compData.label}
             </div>
-            {isGarantia && (
-              <div className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold border border-orange-500 text-orange-600 bg-orange-50">
-                <Circle className="w-2.5 h-2.5" /> Garantia
-              </div>
-            )}
+            <TiposPedidoBadges separacao={separacao} />
             <div className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium border border-border text-muted-foreground bg-muted">
               <Clock className="w-3 h-3" />
-              {isScheduled ? 'Agendado' : 'Flexível'}
+              {isScheduled
+                ? `Hora marcada${separacao.scheduled_time ? ` ${separacao.scheduled_time.slice(0, 5)}` : ''}`
+                : 'Flexível'}
             </div>
           </div>
 
@@ -156,7 +177,24 @@ export function SeparacaoCard({
             {separacao.gestora_equipe}
           </span>
           <div className="flex flex-wrap items-center gap-2">
-            {isSeparado ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 px-2"
+              title="Imprimir esta solicitação"
+              onClick={() => {
+                imprimirSolicitacao(separacao).catch((err) =>
+                  toast({ title: 'Erro ao imprimir', description: err.message, variant: 'destructive' }),
+                )
+              }}
+            >
+              <Printer className="w-3.5 h-3.5" />
+            </Button>
+            {isRecusado ? (
+              <Button size="sm" className="h-8" onClick={() => onEdit(separacao)}>
+                <Send className="w-3.5 h-3.5 mr-1.5" /> Corrigir e reenviar
+              </Button>
+            ) : isSeparado ? (
               <>
                 <Button
                   size="sm"
@@ -169,21 +207,43 @@ export function SeparacaoCard({
                   variant="outline"
                   size="sm"
                   className="h-8 text-blue-600 border-blue-200 hover:bg-blue-50 hover:text-blue-700"
-                  onClick={() => onStatusChange(separacao.id, 'em_separacao')}
+                  onClick={() => onStatusChange(separacao.id, 'Em separação')}
                 >
                   <RotateCcw className="w-3.5 h-3.5 mr-1.5" /> Voltar
                 </Button>
               </>
             ) : isSolicitado ? (
-              <Button
-                size="sm"
-                className="h-8 bg-[#10c98f] hover:bg-[#10c98f]/90 text-white"
-                onClick={() => onStatusChange(separacao.id, 'em_separacao')}
-              >
-                <RotateCcw className="w-3.5 h-3.5 mr-1.5" /> Iniciar Separação
-              </Button>
+              <>
+                {onRecusar && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-destructive border-destructive/30 hover:bg-destructive/10"
+                    onClick={() => onRecusar(separacao)}
+                  >
+                    <Ban className="w-3.5 h-3.5 mr-1.5" /> Recusar
+                  </Button>
+                )}
+                <Button
+                  size="sm"
+                  className="h-8 bg-[#10c98f] hover:bg-[#10c98f]/90 text-white"
+                  onClick={() => onStatusChange(separacao.id, 'Em separação')}
+                >
+                  <RotateCcw className="w-3.5 h-3.5 mr-1.5" /> Iniciar Separação
+                </Button>
+              </>
             ) : (
               <>
+                {onRecusar && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-destructive border-destructive/30 hover:bg-destructive/10"
+                    onClick={() => onRecusar(separacao)}
+                  >
+                    <Ban className="w-3.5 h-3.5 mr-1.5" /> Recusar
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   size="sm"
@@ -217,6 +277,45 @@ export function SeparacaoCard({
           </div>
         </div>
       </div>
+
+      {/* SPEC-226 A3/B2/C: garantia, devolução e motivo da recusa sempre à vista, sem abrir Editar */}
+      {(isRecusado || isGarantia || isDevol) && (
+        <div className="px-4 pb-3 space-y-2 empty:hidden">
+          {isRecusado && (
+            <div className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800">
+              <span className="font-bold">Recusado</span>
+              {separacao.recusado_por_nome ? ` por ${separacao.recusado_por_nome}` : ''}
+              {separacao.recusado_em
+                ? ` em ${format(parseISO(separacao.recusado_em), 'dd/MM HH:mm')}`
+                : ''}
+              : {separacao.motivo_recusa}
+            </div>
+          )}
+          {isGarantia &&
+            (separacao.garantia_detalhes || separacao.garantia_peca || separacao.garantia_motivo) && (
+              <div className="rounded-md border border-yellow-400 bg-yellow-50 px-3 py-2 text-sm text-yellow-900">
+                <span className="font-bold inline-flex items-center gap-1">
+                  <ShieldCheck className="w-3.5 h-3.5" /> Garantia:
+                </span>{' '}
+                {[
+                  separacao.garantia_detalhes,
+                  separacao.garantia_peca && `Peça: ${separacao.garantia_peca}`,
+                  separacao.garantia_motivo && `Motivo: ${separacao.garantia_motivo}`,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </div>
+            )}
+          {isDevol && (
+            <div className="rounded-md border border-red-400 bg-red-50 px-3 py-2 text-sm text-red-900">
+              <span className="font-bold inline-flex items-center gap-1">
+                <Undo2 className="w-3.5 h-3.5" /> Retirar devolução:
+              </span>{' '}
+              {separacao.devolucao_detalhes || 'ver orçamento de devolução anexado'}
+            </div>
+          )}
+        </div>
+      )}
 
       {isExpanded && (
         <div className="px-4 pb-4 pt-3 border-t border-border bg-muted/20 animate-fade-in-up">
@@ -266,7 +365,13 @@ export function SeparacaoCard({
                   </span>
                 </p>
                 <p>
-                  Tipo: <span className="capitalize">{separacao.tipo_pedido || 'Normal'}</span>
+                  Solicitante: <span className="font-medium">{separacao.solicitante || '—'}</span>
+                </p>
+                <p>
+                  Pedido em:{' '}
+                  {separacao.created_at
+                    ? format(parseISO(separacao.created_at), 'dd/MM/yy HH:mm')
+                    : '—'}
                 </p>
               </div>
             </div>

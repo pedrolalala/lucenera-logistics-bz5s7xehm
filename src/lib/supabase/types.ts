@@ -1138,6 +1138,8 @@ export type Database = {
           separacao_id: string | null
           telefone: string | null
           vendedor: string | null
+          combinado_com: string | null
+          entregue_por: string | null
         }
         Insert: {
           cliente?: string | null
@@ -1159,6 +1161,8 @@ export type Database = {
           separacao_id?: string | null
           telefone?: string | null
           vendedor?: string | null
+          combinado_com?: string | null
+          entregue_por?: string | null
         }
         Update: {
           cliente?: string | null
@@ -1180,6 +1184,8 @@ export type Database = {
           separacao_id?: string | null
           telefone?: string | null
           vendedor?: string | null
+          combinado_com?: string | null
+          entregue_por?: string | null
         }
         Relationships: [
           {
@@ -4460,6 +4466,7 @@ export type Database = {
           tamanho_bytes: number | null
           tipo_arquivo: string | null
           url_arquivo: string | null
+          categoria: string
         }
         Insert: {
           created_at?: string | null
@@ -4470,6 +4477,7 @@ export type Database = {
           tamanho_bytes?: number | null
           tipo_arquivo?: string | null
           url_arquivo?: string | null
+          categoria?: string
         }
         Update: {
           created_at?: string | null
@@ -4480,6 +4488,7 @@ export type Database = {
           tamanho_bytes?: number | null
           tipo_arquivo?: string | null
           url_arquivo?: string | null
+          categoria?: string
         }
         Relationships: [
           {
@@ -4652,6 +4661,13 @@ export type Database = {
           tipo_pedido: string | null
           transportadora_nome: string | null
           updated_at: string
+          devolucao_detalhes: string | null
+          inclui_devolucao: boolean
+          motivo_recusa: string | null
+          recusado_em: string | null
+          recusado_por: string | null
+          recusado_por_nome: string | null
+          separado_em: string | null
         }
         Insert: {
           cliente?: string | null
@@ -4692,6 +4708,13 @@ export type Database = {
           tipo_pedido?: string | null
           transportadora_nome?: string | null
           updated_at?: string
+          devolucao_detalhes?: string | null
+          inclui_devolucao?: boolean
+          motivo_recusa?: string | null
+          recusado_em?: string | null
+          recusado_por?: string | null
+          recusado_por_nome?: string | null
+          separado_em?: string | null
         }
         Update: {
           cliente?: string | null
@@ -4732,6 +4755,13 @@ export type Database = {
           tipo_pedido?: string | null
           transportadora_nome?: string | null
           updated_at?: string
+          devolucao_detalhes?: string | null
+          inclui_devolucao?: boolean
+          motivo_recusa?: string | null
+          recusado_em?: string | null
+          recusado_por?: string | null
+          recusado_por_nome?: string | null
+          separado_em?: string | null
         }
         Relationships: [
           {
@@ -7446,6 +7476,7 @@ export type Database = {
         | 'finalizado'
         | 'separado'
         | 'material_solicitado'
+        | 'recusado'
       sinal_status: 'pendente' | 'recebido' | 'creditado' | 'receita_servico'
       solicitacao_status: 'pendente' | 'aprovada' | 'rejeitada' | 'comprada' | 'cancelada'
       status_pagamento: 'Pendente' | 'Parcialmente Pago' | 'Pago' | 'Atrasado' | 'Cancelado'
@@ -7633,7 +7664,7 @@ export const Constants = {
         'Cancelado',
         'finalizado',
         'separado',
-        'material_solicitado',
+        'material_solicitado', 'recusado',
       ],
       sinal_status: ['pendente', 'recebido', 'creditado', 'receita_servico'],
       solicitacao_status: ['pendente', 'aprovada', 'rejeitada', 'comprada', 'cancelada'],

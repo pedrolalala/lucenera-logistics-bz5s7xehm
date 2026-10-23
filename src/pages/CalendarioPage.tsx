@@ -8,27 +8,22 @@ import {
   Package,
   List,
   CalendarDays,
-  Scissors,
-  PackageCheck,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Button } from '@/components/ui/button'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { CalendarGrid } from '@/components/calendario/CalendarGrid'
 import { DayDetails } from '@/components/calendario/DayDetails'
 import { CalendarLegend } from '@/components/calendario/CalendarLegend'
 import { SeparacaoFormModal } from '@/components/separacao/SeparacaoFormModal'
 import { CreateRouteModal } from '@/components/separacao/CreateRouteModal'
-import { useCalendarData, MonthData, DayData } from '@/hooks/useCalendarData'
+import { useCalendarData } from '@/hooks/useCalendarData'
 import { Separacao } from '@/hooks/useSeparacoes'
-import { StatusSeparacao } from '@/types/separacao'
 
 export default function CalendarioPage() {
   const navigate = useNavigate()
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
-  const [statusFilter, setStatusFilter] = useState<'todos' | StatusSeparacao>('todos')
 
   // Modal states
   const [isFormModalOpen, setIsFormModalOpen] = useState(false)
@@ -44,33 +39,8 @@ export default function CalendarioPage() {
 
   const { data: monthData, isLoading, totalEntregas, refetch } = useCalendarData(year, month)
 
-  // Filter monthData by status
-  const filteredMonthData = useMemo(() => {
-    if (statusFilter === 'todos') return monthData
-
-    const filtered: MonthData = {}
-    Object.entries(monthData).forEach(([dateKey, dayData]) => {
-      const filteredEntregas = dayData.entregas.filter((e) => e.status === statusFilter)
-      if (filteredEntregas.length > 0) {
-        filtered[dateKey] = {
-          total: filteredEntregas.length,
-          materialSolicitado: filteredEntregas.filter((e) => e.status === 'material_solicitado')
-            .length,
-          emSeparacao: filteredEntregas.filter((e) => e.status === 'Em separação').length,
-          separado: filteredEntregas.filter((e) => e.status === 'separado').length,
-          garantia: filteredEntregas.filter((e) => e.status === 'matheus_separacao_garantia')
-            .length,
-          pendente: filteredEntregas.filter((e) => e.status === 'pendente').length,
-          finalizado: filteredEntregas.filter((e) => e.status === 'finalizado').length,
-          separando: filteredEntregas.filter(
-            (e) => e.status === 'material_solicitado' || e.status === 'Em separação',
-          ).length,
-          entregas: filteredEntregas,
-        }
-      }
-    })
-    return filtered
-  }, [monthData, statusFilter])
+  // SPEC-226 D: calendário = só as entregas de cada dia (sem filtro de status)
+  const filteredMonthData = monthData
 
   const filteredTotalEntregas = useMemo(() => {
     return Object.values(filteredMonthData).reduce((sum, day) => sum + day.total, 0)
@@ -142,7 +112,7 @@ export default function CalendarioPage() {
               <div>
                 <h1 className="text-2xl font-bold text-foreground">Calendário de Entregas</h1>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Visualize todas as entregas organizadas por data
+                  Entregas marcadas para cada dia
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -160,29 +130,6 @@ export default function CalendarioPage() {
                 </Button>
               </div>
             </div>
-            <Tabs
-              value={statusFilter}
-              onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}
-              className="w-full sm:w-auto"
-            >
-              <TabsList className="h-9">
-                <TabsTrigger value="todos" className="text-xs px-3 gap-1.5">
-                  Todos
-                </TabsTrigger>
-                <TabsTrigger value="material_solicitado" className="text-xs px-3 gap-1.5">
-                  <Package className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Solicitado</span>
-                </TabsTrigger>
-                <TabsTrigger value="Em separação" className="text-xs px-3 gap-1.5">
-                  <Scissors className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Em Separação</span>
-                </TabsTrigger>
-                <TabsTrigger value="separado" className="text-xs px-3 gap-1.5">
-                  <PackageCheck className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Separado</span>
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
           </div>
         </div>
       </div>

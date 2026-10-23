@@ -38,6 +38,13 @@ export interface Separacao {
   inclui_garantia?: boolean
   garantia_peca?: string | null
   garantia_motivo?: string | null
+  // SPEC-226
+  inclui_devolucao?: boolean
+  devolucao_detalhes?: string | null
+  separado_em?: string | null
+  recusado_em?: string | null
+  recusado_por_nome?: string | null
+  motivo_recusa?: string | null
 }
 
 export function useSeparacoes() {
@@ -58,7 +65,7 @@ export function useSeparacoes() {
         // apareça no Logística "no momento em que vai para separar" — ou
         // seja, assim que uma separação parcial é criada (status
         // 'Pendente'), não só quando a venda inteira fica 'Pronto'.
-        .in('status', ['material_solicitado', 'Em separação', 'separado', 'Pendente', 'Pronto'])
+        .in('status', ['material_solicitado', 'Em separação', 'separado', 'Pendente', 'Pronto', 'recusado'])
         .order('data_entrega', { ascending: true })
 
       if (fetchError) throw fetchError
@@ -77,14 +84,11 @@ export function useSeparacoes() {
     setSeparacoes((prev) => prev.map((s) => (s.id === id ? { ...s, status: newStatus } : s)))
 
     try {
-      const updatePayload: Record<string, unknown> = { status: newStatus }
-      if (newStatus === 'Em separação') {
-        updatePayload.data_inicio_separacao = new Date().toISOString()
-      }
-
+      // SPEC-226: a hora de cada etapa (início, separado, recusado) é carimbada
+      // no banco (trigger separacoes_marcar_etapas), não aqui.
       const { error: updateError } = await supabase
         .from('separacoes')
-        .update(updatePayload)
+        .update({ status: newStatus })
         .eq('id', id)
 
       if (updateError) throw updateError
@@ -99,6 +103,20 @@ export function useSeparacoes() {
       const message = err instanceof Error ? err.message : 'Erro ao atualizar status'
       toast({ title: 'Erro ao atualizar', description: message, variant: 'destructive' })
     }
+  }
+
+  const recusarSeparacao = async (id: string, motivo: string): Promise<boolean> => {
+    const { error: updateError } = await supabase
+      .from('separacoes')
+      .update({ status: 'recusado', motivo_recusa: motivo.trim() })
+      .eq('id', id)
+    if (updateError) {
+      toast({ title: 'Erro ao recusar', description: updateError.message, variant: 'destructive' })
+      return false
+    }
+    toast({ title: 'Solicitação recusada', className: 'bg-success text-success-foreground border-none' })
+    await fetchSeparacoes()
+    return true
   }
 
   const deleteSeparacao = async (id: string) => {
@@ -196,6 +214,7 @@ export function useSeparacoes() {
     isLoading,
     error,
     updateStatus,
+    recusarSeparacao,
     deleteSeparacao,
     findByCodigoObra,
     finalizarEntrega,

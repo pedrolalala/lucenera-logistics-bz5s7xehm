@@ -56,7 +56,7 @@ export function EntregaFinalizadaRow({ entrega, onOpenDetails }: Props) {
         </span>
 
         {isGarantia && (
-          <span className="border border-orange-500 text-orange-600 bg-orange-50 text-[10px] md:text-xs font-bold px-2 py-1 rounded-md tracking-wide">
+          <span className="border border-yellow-500 text-yellow-800 bg-yellow-100 text-[10px] md:text-xs font-bold px-2 py-1 rounded-md tracking-wide">
             GARANTIA
           </span>
         )}
