@@ -45,18 +45,15 @@ export function EditUserModal({ isOpen, onClose, user }: EditUserModalProps) {
     if (!user) return
     setIsLoading(true)
     try {
-      // Atualiza a tabela user_roles
-      const { error: rolesError } = await supabase
-        .from('user_roles')
+      // Papel só do Logística; não mexe em usuarios.role (papel da Central)
+      const { data: saved, error: rolesError } = await supabase
+        .from('user_roles_separacao')
         .update({ nome_completo: nome, role })
         .eq('id', user.id)
+        .select('id')
 
       if (rolesError) throw rolesError
-
-      // Sincroniza os dados com a tabela usuarios (caso exista relacionamento)
-      if (user.user_id) {
-        await supabase.from('usuarios').update({ nome: nome, role }).eq('id', user.user_id)
-      }
+      if (!saved?.length) throw new Error('sem permissão para alterar este acesso')
 
       toast.success('Permissões e perfil atualizados com sucesso!')
       queryClient.invalidateQueries({ queryKey: ['admin-users'] })

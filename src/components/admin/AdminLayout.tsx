@@ -30,8 +30,9 @@ export function AdminLayout({ children }: { children: ReactNode }) {
     queryKey: ['admin-user-count'],
     queryFn: async () => {
       const { count } = await supabase
-        .from('user_roles')
+        .from('user_roles_separacao')
         .select('*', { count: 'exact', head: true })
+        .eq('sistema', 'Separação e Entregas')
       return count || 0
     },
   })

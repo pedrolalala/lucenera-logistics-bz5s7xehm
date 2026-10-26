@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Pencil, Trash2, Search, Shield, Truck, User, Mail, Calendar } from 'lucide-react'
+import { Plus, Pencil, Trash2, Search, Shield, Truck, User, Users, Mail, Calendar } from 'lucide-react'
 import { EditUserModal } from '@/components/admin/EditUserModal'
 import { toast } from 'sonner'
 import {
@@ -30,8 +30,9 @@ export default function AdminUsersPage() {
     queryKey: ['admin-users'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('user_roles')
+        .from('user_roles_separacao')
         .select('*')
+        .eq('sistema', 'Separação e Entregas')
         .order('created_at', { ascending: false })
       if (error) throw error
       return data || []
@@ -40,8 +41,13 @@ export default function AdminUsersPage() {
 
   const deleteUserMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('user_roles').delete().eq('id', id)
+      const { data, error } = await supabase
+        .from('user_roles_separacao')
+        .delete()
+        .eq('id', id)
+        .select('id')
       if (error) throw error
+      if (!data?.length) throw new Error('sem permissão para remover este acesso')
     },
     onSuccess: () => {
       toast.success('Acesso de usuário removido com sucesso!')

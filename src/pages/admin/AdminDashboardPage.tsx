@@ -31,7 +31,10 @@ export default function AdminDashboardPage() {
     queryKey: ['admin-dashboard-stats'],
     queryFn: async () => {
       const [usersRes, pendentesRes, entregasRes] = await Promise.all([
-        supabase.from('user_roles').select('id', { count: 'exact', head: true }),
+        supabase
+          .from('user_roles_separacao')
+          .select('id', { count: 'exact', head: true })
+          .eq('sistema', 'Separação e Entregas'),
         supabase.from('entregas_pendentes').select('status_pendencia'),
         supabase
           .from('entregas_finalizadas')
