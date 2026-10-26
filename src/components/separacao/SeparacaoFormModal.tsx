@@ -43,8 +43,8 @@ import { supabase } from '@/lib/supabase/client'
 import { useToast } from '@/hooks/use-toast'
 import { enviarArquivo } from '@/lib/logistica'
 
-// Gestoras que já aparecem nas solicitações (o valor gravado é o nome)
-const GESTORAS = ['Marina Pousa', 'Thais Gomes', 'Thairine Silva', 'Roberta Battolo', 'Matheus', 'Outro']
+// Gestoras das equipes (o valor gravado é o nome). Roberta Battolo saiu em 26/10: é cliente, não gestora.
+const GESTORAS = ['Marina Pousa', 'Thais Gomes', 'Thairine Silva', 'Matheus', 'Outro']
 
 type Anexo = { file: File; categoria: 'geral' | 'orcamento_devolucao' }
 
