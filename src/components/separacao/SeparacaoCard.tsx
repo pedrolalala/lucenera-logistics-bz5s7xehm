@@ -32,6 +32,7 @@ import { SeparacaoItensList } from '@/components/separacao/SeparacaoItensList'
 import { TiposPedidoBadges } from '@/components/separacao/TiposPedidoBadges'
 import { useToast } from '@/hooks/use-toast'
 import { COMPLEXIDADE_LABEL, imprimirSolicitacao, isDevolucao } from '@/lib/logistica'
+import { imprimirPedidoSeparacao } from '@/lib/pedido-separacao'
 
 interface SeparacaoCardProps {
   separacao: Separacao
@@ -190,6 +191,27 @@ export function SeparacaoCard({
             >
               <Printer className="w-3.5 h-3.5" />
             </Button>
+            {/* SPEC-231: mesmo "Pedido em Separação" que a Separação Parcial imprime ao separar */}
+            {separacao.numero_venda && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 px-2"
+                title="Exportar o Pedido em Separação (mesmo PDF da Separação Parcial)"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  imprimirPedidoSeparacao(separacao.id).catch((err) =>
+                    toast({
+                      title: 'Não foi possível exportar o pedido',
+                      description: err.message,
+                      variant: 'destructive',
+                    }),
+                  )
+                }}
+              >
+                <FileText className="w-3.5 h-3.5 mr-1" /> Pedido
+              </Button>
+            )}
             {isRecusado ? (
               <Button size="sm" className="h-8" onClick={() => onEdit(separacao)}>
                 <Send className="w-3.5 h-3.5 mr-1.5" /> Corrigir e reenviar
