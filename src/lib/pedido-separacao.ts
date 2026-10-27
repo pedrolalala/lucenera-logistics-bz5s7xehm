@@ -37,6 +37,8 @@ interface ItemPedido {
   descricao: string
   codigo: number | null
   referencia: string | null
+  /** SPEC-231 (27/10): marca da peça, ajuda a identificar o item */
+  marca: string | null
   classificacao: string | null
   quantidade: number
 }
@@ -70,7 +72,7 @@ async function carregarDados(separacaoId: string) {
     : { data: [] }
   const produtoIds = ((projItens as any[]) || []).map((p) => p.produto_id).filter(Boolean)
   const { data: produtos } = produtoIds.length
-    ? await supabase.from('produtos').select('id, codigo_produto, referencia').in('id', produtoIds)
+    ? await supabase.from('produtos').select('id, codigo_produto, referencia, marca:marcas(nome)').in('id', produtoIds)
     : { data: [] }
   const projMap = new Map(((projItens as any[]) || []).map((p) => [p.id, p]))
   const prodMap = new Map(((produtos as any[]) || []).map((p) => [p.id, p]))
@@ -82,6 +84,7 @@ async function carregarDados(separacaoId: string) {
       descricao: i.descricao,
       codigo: pr?.codigo_produto ?? null,
       referencia: pr?.referencia ?? null,
+      marca: (Array.isArray(pr?.marca) ? pr.marca[0] : pr?.marca)?.nome ?? null,
       classificacao: pi?.l_fixo ?? null,
       quantidade: Number(i.quantidade) - Number(i.quantidade_estornada || 0),
     }
@@ -172,6 +175,7 @@ export async function imprimirPedidoSeparacao(separacaoId: string) {
           <td class="centro">${esc(i.classificacao || '-')}</td>
           <td class="centro">${esc(i.codigo ?? '-')}</td>
           <td class="ref">${esc(i.referencia || '-')}</td>
+          <td class="ref">${esc(i.marca || '-')}</td>
           <td class="descricao">${esc(i.descricao || '-')}</td>
           <td class="centro">${i.quantidade}</td>
         </tr>`,
@@ -250,14 +254,14 @@ export async function imprimirPedidoSeparacao(separacaoId: string) {
         </div>
         <table>
           <colgroup>
-            <col style="width:9%" /><col style="width:9%" /><col style="width:18%" /><col /><col style="width:8%" />
+            <col style="width:8%" /><col style="width:8%" /><col style="width:16%" /><col style="width:13%" /><col /><col style="width:7%" />
           </colgroup>
           <thead>
-            <tr><th class="centro">ID</th><th class="centro">Cód.</th><th>Ref.</th><th>Descrição</th><th class="centro">Quant.</th></tr>
+            <tr><th class="centro">ID</th><th class="centro">Cód.</th><th>Ref.</th><th>Marca</th><th>Descrição</th><th class="centro">Quant.</th></tr>
           </thead>
           <tbody>${linhas}</tbody>
           <tfoot>
-            <tr><td colspan="4">Total de itens: ${totalItens}</td><td class="centro">${totalPecas}</td></tr>
+            <tr><td colspan="5">Total de itens: ${totalItens}</td><td class="centro">${totalPecas}</td></tr>
           </tfoot>
         </table>
         <div class="observacoes">
