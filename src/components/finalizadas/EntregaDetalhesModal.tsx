@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { format, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { PhotoGallery } from '@/components/finalizadas/PhotoGallery'
-import { registrarEvento } from '@/lib/logistica'
+import { registrarEvento, semPrefixo } from '@/lib/logistica'
 
 /** fotos_urls é texto: JSON de caminhos/URLs (às vezes separado por vírgula nos antigos). */
 function lerFotos(v: unknown): string[] {
@@ -51,6 +51,9 @@ export function EntregaDetalhesModal({ entrega, open, onClose }: any) {
                 Código do Pedido
               </p>
               <p className="font-mono font-bold text-primary">{idDisplay}</p>
+              {entrega.venda_numero && (
+                <p className="text-sm text-muted-foreground">Venda {semPrefixo(entrega.venda_numero)}</p>
+              )}
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground uppercase">Cód. Obra</p>

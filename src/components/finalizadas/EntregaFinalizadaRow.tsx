@@ -4,6 +4,7 @@ import { ptBR } from 'date-fns/locale'
 import { Clock, Eye, User } from 'lucide-react'
 import { EntregaFinalizada } from '@/hooks/useEntregasFinalizadas'
 import { cn } from '@/lib/utils'
+import { semPrefixo } from '@/lib/logistica'
 
 interface Props {
   entrega: EntregaFinalizada
@@ -64,6 +65,11 @@ export function EntregaFinalizadaRow({ entrega, onOpenDetails }: Props) {
         <span className="font-mono text-sm md:text-base font-bold text-muted-foreground whitespace-nowrap">
           {idDisplay}
         </span>
+        {entrega.venda_numero && (
+          <span className="text-xs font-semibold text-muted-foreground whitespace-nowrap border rounded px-1.5 py-0.5">
+            Venda {semPrefixo(entrega.venda_numero)}
+          </span>
+        )}
 
         <span className="font-bold text-sm md:text-base text-foreground uppercase tracking-tight">
           {entrega.cliente}

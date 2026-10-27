@@ -31,7 +31,7 @@ import { SeparacaoFiles } from '@/components/separacao/SeparacaoFiles'
 import { SeparacaoItensList } from '@/components/separacao/SeparacaoItensList'
 import { TiposPedidoBadges } from '@/components/separacao/TiposPedidoBadges'
 import { useToast } from '@/hooks/use-toast'
-import { COMPLEXIDADE_LABEL, imprimirSolicitacao, isDevolucao } from '@/lib/logistica'
+import { COMPLEXIDADE_LABEL, imprimirSolicitacao, isDevolucao, semPrefixo } from '@/lib/logistica'
 import { imprimirPedidoSeparacao } from '@/lib/pedido-separacao'
 
 interface SeparacaoCardProps {
@@ -154,6 +154,7 @@ export function SeparacaoCard({
               <span className="font-bold text-foreground bg-muted px-1.5 py-0.5 rounded border border-border">
                 {lucCode}
               </span>
+              {separacao.venda_numero && <span>Venda {semPrefixo(separacao.venda_numero)}</span>}
               <span>Obra: {separacao.codigo_obra}</span>
               <span className="flex items-center gap-1">
                 <Calendar className="w-3.5 h-3.5" />

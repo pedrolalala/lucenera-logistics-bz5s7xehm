@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase/client'
+import { numerosDaVenda } from '@/lib/logistica'
 import { useToast } from '@/hooks/use-toast'
 import { StatusSeparacao, NivelComplexidade, TipoEntrega } from '@/types/separacao'
 
@@ -23,6 +24,8 @@ export interface Separacao {
   observacoes_internas: string | null
   gestora_equipe: string
   numero_venda: string[]
+  /** SPEC-231 D4: número da venda (VENDA-0003), buscado no orçamento de numero_venda. */
+  venda_numero?: string | null
   solicitante: string | null
   separacoes_parciais: string[] | null
   nivel_complexidade: NivelComplexidade | null
@@ -70,7 +73,9 @@ export function useSeparacoes() {
 
       if (fetchError) throw fetchError
 
-      setSeparacoes((data || []) as Separacao[])
+      const lista = (data || []) as Separacao[]
+      const vendas = await numerosDaVenda(lista.map((s) => s.numero_venda))
+      setSeparacoes(lista.map((s) => ({ ...s, venda_numero: vendas.get(String(s.numero_venda)) ?? null })))
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erro ao carregar separações'
       setError(message)

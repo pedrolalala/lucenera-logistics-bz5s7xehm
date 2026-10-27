@@ -6,6 +6,23 @@ import type { Separacao } from '@/hooks/useSeparacoes'
 
 export type BucketLogistica = 'materiais-separacao' | 'entregas-fotos'
 
+// SPEC-231 D4: separacoes.numero_venda guarda o número do ORÇAMENTO (ex.: ORC-0003); o da venda (VENDA-0003,
+// sequência própria) vem de orcamentos.numero_venda. Devolve orçamento -> venda.
+export async function numerosDaVenda(orcamentos: unknown[]): Promise<Map<string, string>> {
+  const numeros = Array.from(
+    new Set(orcamentos.map((n) => String(n ?? '').trim()).filter((n) => /^ORC-/i.test(n))),
+  )
+  if (numeros.length === 0) return new Map()
+  const { data } = await supabase.from('orcamentos').select('numero, numero_venda').in('numero', numeros)
+  return new Map(
+    ((data as any[]) || []).filter((o) => o.numero_venda).map((o) => [o.numero, o.numero_venda]),
+  )
+}
+
+/** "VENDA-0003" -> "0003" */
+export const semPrefixo = (numero: string | null | undefined) =>
+  numero ? numero.replace(/^[A-Za-z]+-/, '') : ''
+
 export const COMPLEXIDADE_LABEL: Record<string, string> = {
   facil: 'Fácil',
   medio: 'Médio',

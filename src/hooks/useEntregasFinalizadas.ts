@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase/client'
+import { numerosDaVenda } from '@/lib/logistica'
 
 export type EntregaFinalizada = {
   id: string
@@ -15,6 +16,8 @@ export type EntregaFinalizada = {
   observacoes?: string
   numero_entrega?: string
   gestora_equipe?: string
+  /** SPEC-231 D4: número da venda (VENDA-0003) da separação de origem. */
+  venda_numero?: string | null
   separacoes?:
     | {
         inclui_garantia?: boolean
@@ -43,14 +46,20 @@ export function useEntregasFinalizadas() {
           *,
           separacoes (
             inclui_garantia,
-            data_inicio_separacao
+            data_inicio_separacao,
+            numero_venda
           )
         `)
         .order('data_entrega_real', { ascending: false })
 
       if (err) throw err
 
-      setEntregas((data as any[]) || [])
+      const lista = (data as any[]) || []
+      const sepDe = (e: any) => (Array.isArray(e.separacoes) ? e.separacoes[0] : e.separacoes)
+      const vendas = await numerosDaVenda(lista.map((e) => sepDe(e)?.numero_venda))
+      setEntregas(
+        lista.map((e) => ({ ...e, venda_numero: vendas.get(String(sepDe(e)?.numero_venda ?? '')) ?? null })),
+      )
     } catch (err: any) {
       console.error('Error fetching entregas finalizadas:', err)
       setError(err.message || 'Erro ao carregar entregas')
