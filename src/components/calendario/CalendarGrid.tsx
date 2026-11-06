@@ -69,11 +69,13 @@ export function CalendarGrid({
             const isToday = isSameDay(day, new Date())
 
             const porComp: Record<string, number> = {}
-            dayData?.entregas?.forEach((e) => {
-              const k = COMP.some((c) => c.key === e.nivel_complexidade) ? e.nivel_complexidade : 'none'
+            // SPEC-256: conta por entrega (grupo cliente + endereço), com a complexidade mais alta do grupo
+            dayData?.grupos?.forEach((g) => {
+              const k = COMP.some((c) => c.key === g.nivelComplexidade) ? (g.nivelComplexidade as string) : 'none'
               porComp[k] = (porComp[k] || 0) + 1
             })
             const total = dayData?.total || 0
+            const listas = dayData?.listas || 0
 
             return (
               <button
@@ -106,6 +108,14 @@ export function CalendarGrid({
                         {total === 1 ? ' entrega' : ' entregas'}
                       </span>
                     </span>
+                    {listas > total && (
+                      <span
+                        className="text-[9px] sm:text-[10px] text-muted-foreground leading-none mt-0.5"
+                        title={`${listas} listas de separação em ${total} ${total === 1 ? 'entrega' : 'entregas'}`}
+                      >
+                        {listas} listas
+                      </span>
+                    )}
                     <div className="flex flex-wrap justify-center gap-0.5 sm:gap-1 w-full mt-1 px-0.5">
                       {COMP.filter((c) => porComp[c.key]).map((c) => (
                         <span

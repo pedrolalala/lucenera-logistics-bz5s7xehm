@@ -35,7 +35,9 @@ export function DayDetails({ selectedDate, dayData, onEditSeparacao, onCreateRou
           </h2>
           <p className="text-sm text-muted-foreground mt-1 font-medium">
             {hasDeliveries
-              ? `${dayData.total} ${dayData.total === 1 ? 'entrega programada' : 'entregas programadas'}`
+              ? `${dayData.total} ${dayData.total === 1 ? 'entrega programada' : 'entregas programadas'}${
+                  dayData.listas > dayData.total ? ` (${dayData.listas} listas)` : ''
+                }`
               : 'Nenhuma entrega programada'}
           </p>
         </div>
@@ -53,7 +55,8 @@ export function DayDetails({ selectedDate, dayData, onEditSeparacao, onCreateRou
             Dia livre. Nenhuma entrega agendada para {format(selectedDate, 'dd/MM/yyyy')}.
           </div>
         ) : (
-          dayData.entregas.map((entrega: any) => {
+          (dayData.grupos as { chave: string; entregas: any[] }[]).map((grupo) => {
+            const cartoes = grupo.entregas.map((entrega: any) => {
             const complexityColor =
               entrega.nivel_complexidade === 'facil'
                 ? 'bg-green-500'
@@ -133,6 +136,20 @@ export function DayDetails({ selectedDate, dayData, onEditSeparacao, onCreateRou
                     </div>
                   </div>
                 </div>
+              </div>
+            )
+            })
+            // SPEC-256: várias listas do mesmo cliente e endereço no mesmo dia = UMA entrega
+            if (grupo.entregas.length === 1) return cartoes[0]
+            return (
+              <div
+                key={grupo.chave}
+                className="rounded-xl border border-primary/30 bg-primary/5 p-2 space-y-2"
+              >
+                <p className="px-1 pt-1 text-xs font-semibold text-primary">
+                  1 entrega · {grupo.entregas.length} listas do mesmo cliente e endereço
+                </p>
+                {cartoes}
               </div>
             )
           })

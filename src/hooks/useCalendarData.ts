@@ -1,9 +1,14 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { startOfMonth, endOfMonth, format } from 'date-fns'
+import { agruparEntregas, type GrupoEntrega } from '@/lib/agrupar-entregas'
 
 export type DayData = {
+  /** SPEC-256: entregas reais do dia (listas do mesmo cliente e endereço contam como UMA). */
   total: number
+  /** SPEC-256: quantidade de listas (separações) do dia, antes de agrupar. */
+  listas: number
+  grupos: GrupoEntrega[]
   materialSolicitado: number
   emSeparacao: number
   separado: number
@@ -50,6 +55,8 @@ export function useCalendarData(year: number, month: number) {
         if (!monthData[dateKey]) {
           monthData[dateKey] = {
             total: 0,
+            listas: 0,
+            grupos: [],
             materialSolicitado: 0,
             emSeparacao: 0,
             separado: 0,
@@ -61,9 +68,7 @@ export function useCalendarData(year: number, month: number) {
           }
         }
 
-        monthData[dateKey].total += 1
         monthData[dateKey].entregas.push(s)
-        total += 1
 
         switch (s.status) {
           case 'material_solicitado':
@@ -89,6 +94,14 @@ export function useCalendarData(year: number, month: number) {
             break
         }
       })
+
+      // SPEC-256: agrupa as listas do mesmo cliente + endereço; o total do dia e do mês conta entregas, não listas
+      for (const dia of Object.values(monthData)) {
+        dia.listas = dia.entregas.length
+        dia.grupos = agruparEntregas(dia.entregas)
+        dia.total = dia.grupos.length
+        total += dia.total
+      }
 
       setData(monthData)
       setTotalEntregas(total)
