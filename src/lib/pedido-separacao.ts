@@ -96,6 +96,9 @@ async function carregarDados(separacaoId: string) {
           .from('orcamentos')
           .select('numero, numero_venda, data_emissao, empresa:empresas(nome), vendedor:funcionarios(nome)')
           .eq('numero', s.numero_venda)
+          // SPEC-280: o número do orçamento se repete entre equipes; o cliente desambigua (sem isso o maybeSingle falhava)
+          .match(s.cliente_id ? { cliente_id: s.cliente_id } : {})
+          .limit(1)
           .maybeSingle()
       : Promise.resolve({ data: null }),
     s.cliente_id
@@ -110,6 +113,7 @@ async function carregarDados(separacaoId: string) {
           .from('separacoes')
           .select('id, created_at')
           .eq('numero_venda', s.numero_venda)
+          .match(s.cliente_id ? { cliente_id: s.cliente_id } : {})
           .order('created_at', { ascending: true })
       : Promise.resolve({ data: [] }),
   ])
