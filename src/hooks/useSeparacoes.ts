@@ -212,11 +212,47 @@ export function useSeparacoes() {
     }
   }
 
+  // Registrar Entrega: aceita qualquer código que apareça na tela de Separação —
+  // nº da entrega/parcial (ORC-0080-P1, 5777-P1, LUC-8364), nº da venda/orçamento
+  // (ORC-0080, 5959) ou código da obra (23.230 ou 23230). Pode devolver mais de uma
+  // (obra/venda com várias parciais); a tela deixa escolher.
+  const buscarParaRegistro = async (texto: string): Promise<Separacao[]> => {
+    try {
+      const t = texto
+        .trim()
+        .toUpperCase()
+        .replace(/Ç/g, 'C')
+        .replace(/\s+/g, '')
+      if (!t) return []
+      const q = (v: string) => `"${v.replace(/"/g, '')}"`
+      const filtros = [`numero_entrega.eq.${q(t)}`, `numero_venda.eq.${q(t)}`]
+      filtros.push(`numero_entrega.ilike.${q(`${t}-P%`)}`)
+      const digitos = t.replace(/\D/g, '')
+      if (/^[0-9.]+$/.test(t) && digitos.length >= 5) {
+        filtros.push(`codigo_obra.eq.${q(t)}`)
+        filtros.push(`codigo_obra.eq.${q(`${digitos.slice(0, 2)}.${digitos.slice(2)}`)}`)
+        filtros.push(`codigo_obra.eq.${q(digitos)}`)
+      } else {
+        filtros.push(`codigo_obra.eq.${q(t)}`)
+      }
+      const { data, error } = await supabase
+        .from('separacoes')
+        .select('*')
+        .or(filtros.join(','))
+        .order('created_at', { ascending: true })
+      if (error) throw error
+      return (data as Separacao[]) || []
+    } catch {
+      return []
+    }
+  }
+
   useEffect(() => {
     fetchSeparacoes()
   }, [])
 
   return {
+    buscarParaRegistro,
     separacoes,
     isLoading,
     error,

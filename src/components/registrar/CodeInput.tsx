@@ -10,7 +10,8 @@ export function CodeInput({ value, onChange, onValidate, validationState, errorM
         <Input
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="Ex: LUC-0001"
+          onKeyDown={(e) => e.key === 'Enter' && onValidate(true)}
+          placeholder="Ex: ORC-0080-P1, LUC-0001 ou 23.230"
           className="h-14 font-mono text-lg"
         />
         <Button onClick={() => onValidate(true)} className="h-14 px-6">

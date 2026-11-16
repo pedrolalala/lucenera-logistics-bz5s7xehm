@@ -36,14 +36,49 @@ export default function RegistrarEntregaPage() {
   // Problem modal
   const [isProblemModalOpen, setIsProblemModalOpen] = useState(false)
 
-  const { findByCodigoObra } = useSeparacoes()
+  const { buscarParaRegistro } = useSeparacoes()
   const { finalizarEntrega, isSubmitting } = useFinalizarEntrega()
   const { user } = useAuth()
   const { toast } = useToast()
 
-  // Validate code: numeric 5-6 digits (codigo_obra) OR LUC-NNNN format (numero_entrega)
-  const isValidCodeFormat = (code: string) =>
-    /^[0-9]{5,6}$/.test(code) || /^LUC-\d{1,6}$/i.test(code)
+  const [opcoes, setOpcoes] = useState<Separacao[]>([])
+
+  // Aplica as regras de status a UMA separação e abre o formulário se estiver liberada
+  const aceitar = useCallback(
+    (separacao: Separacao) => {
+      const bloquear = (msg: string) => {
+        setValidationState('error')
+        setErrorMessage(msg)
+        setObraData(null)
+      }
+      if (separacao.status === 'recusado')
+        return bloquear('⚠️ Esta solicitação foi recusada pelo estoque e ainda não foi reenviada.')
+      if (separacao.status === 'material_solicitado')
+        return bloquear('⚠️ Esta obra ainda está aguardando material. Aguarde ou fale com o escritório.')
+      if (separacao.status === 'pendente')
+        return bloquear('⚠️ Esta obra está com pendência registrada. Resolva a pendência primeiro.')
+      if (String(separacao.status).toLowerCase() === 'cancelado')
+        return bloquear('Esta entrega foi cancelada.')
+      if (separacao.status === 'finalizado') return bloquear('Esta entrega já foi registrada anteriormente.')
+
+      setOpcoes([])
+      setValidationState('success')
+      setErrorMessage('')
+      setObraData(separacao)
+      // SPEC-226 E1 (reunião 08/10): quem recebeu de fato começa vazio e é obrigatório;
+      // com quem foi combinado (responsavel_recebimento) é guardado à parte.
+      setRecebidoPor('')
+      setTelefoneContato(separacao.telefone || '')
+      setQuemEntregou('Alexandre')
+
+      toast({
+        title: 'Entrega encontrada! ✓',
+        description: separacao.cliente,
+        className: 'bg-success text-success-foreground border-none',
+      })
+    },
+    [toast],
+  )
 
   const validateCode = useCallback(
     async (force = false) => {
@@ -54,18 +89,9 @@ export default function RegistrarEntregaPage() {
         return
       }
 
+      setOpcoes([])
       if (!trimmedCode) {
         setValidationState('idle')
-        setObraData(null)
-        return
-      }
-
-      // Validate format
-      if (!isValidCodeFormat(trimmedCode)) {
-        setValidationState('error')
-        setErrorMessage(
-          'Código inválido. Use: LUC-0001 (número da entrega) ou 26001 (código da obra)',
-        )
         setObraData(null)
         return
       }
@@ -73,61 +99,33 @@ export default function RegistrarEntregaPage() {
       setValidationState('loading')
       setErrorMessage('')
 
-      const separacao = await findByCodigoObra(trimmedCode)
+      const achadas = await buscarParaRegistro(trimmedCode)
 
-      if (!separacao) {
-        setValidationState('error')
-        setErrorMessage('Código não encontrado. Verifique e tente novamente.')
-        setObraData(null)
-        return
-      }
-
-      if (separacao.status === 'recusado') {
-        setValidationState('error')
-        setErrorMessage('⚠️ Esta solicitação foi recusada pelo estoque e ainda não foi reenviada.')
-        setObraData(null)
-        return
-      }
-
-      if (separacao.status === 'material_solicitado') {
+      if (achadas.length === 0) {
         setValidationState('error')
         setErrorMessage(
-          '⚠️ Esta obra ainda está aguardando material. Aguarde ou fale com o escritório.',
+          'Não encontrei. Use o código que aparece na Separação (ex.: ORC-0080-P1, LUC-0001), o número da venda ou o código da obra (ex.: 23.230).',
         )
         setObraData(null)
         return
       }
 
-      if (separacao.status === 'pendente') {
-        setValidationState('error')
-        setErrorMessage('⚠️ Esta obra está com pendência registrada. Resolva a pendência primeiro.')
-        setObraData(null)
+      // Se houver mais de uma, as já finalizadas só atrapalham
+      const abertas = achadas.filter(
+        (s) => s.status !== 'finalizado' && String(s.status).toLowerCase() !== 'cancelado',
+      )
+      const lista = abertas.length > 0 ? abertas : achadas
+
+      if (lista.length === 1) {
+        aceitar(lista[0])
         return
       }
 
-      if (separacao.status === 'finalizado') {
-        setValidationState('error')
-        setErrorMessage('Esta obra já foi entregue anteriormente.')
-        setObraData(null)
-        return
-      }
-
-      // Success - obra found and status is valid
-      setValidationState('success')
-      setObraData(separacao)
-      // SPEC-226 E1 (reunião 08/10): quem recebeu de fato começa vazio e é obrigatório;
-      // com quem foi combinado (responsavel_recebimento) é guardado à parte.
-      setRecebidoPor('')
-      setTelefoneContato(separacao.telefone || '')
-      setQuemEntregou('Alexandre')
-
-      toast({
-        title: 'Obra encontrada! ✓',
-        description: separacao.cliente,
-        className: 'bg-success text-success-foreground border-none',
-      })
+      setValidationState('idle')
+      setObraData(null)
+      setOpcoes(lista)
     },
-    [codigoObra, validationState, obraData, findByCodigoObra, toast],
+    [codigoObra, validationState, obraData, buscarParaRegistro, aceitar],
   )
 
   const handleSubmit = async () => {
@@ -244,6 +242,29 @@ export default function RegistrarEntregaPage() {
             validationState={validationState}
             errorMessage={errorMessage}
           />
+
+          {/* Mais de uma entrega para o código digitado: escolher */}
+          {opcoes.length > 1 && (
+            <div className="bg-card rounded-xl p-5 shadow-sm border border-border space-y-2">
+              <p className="text-sm font-semibold">
+                Encontrei {opcoes.length} entregas. Qual delas?
+              </p>
+              {opcoes.map((o) => (
+                <button
+                  key={o.id}
+                  type="button"
+                  onClick={() => aceitar(o)}
+                  className="w-full text-left rounded-lg border border-border p-3 hover:bg-muted"
+                >
+                  <span className="font-mono font-bold">{o.numero_entrega || o.codigo_obra}</span>
+                  <span className="text-sm text-muted-foreground">
+                    {' '}
+                    · {o.cliente} · Obra {o.codigo_obra} · {o.status}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Step 2: Obra Summary (when validated) */}
           {obraData && <ObraResumoCard separacao={obraData} />}
