@@ -109,26 +109,14 @@ const tiposTexto = (s: Separacao) =>
 
 /** Imprime só esta solicitação (como imprimir o corpo de um e-mail). */
 export async function imprimirSolicitacao(s: Separacao) {
-  const [{ data: itens }, { data: arquivos }] = await Promise.all([
-    supabase
-      .from('separacao_itens')
-      .select('descricao, quantidade, unidade, observacoes')
-      .eq('separacao_id', s.id)
-      .order('created_at'),
-    supabase.from('separacao_arquivos').select('nome_arquivo, categoria').eq('separacao_id', s.id),
-  ])
+  // SPEC-314: a solicitação impressa não lista mais as peças (pedido do Matheus, 16/11).
+  const { data: arquivos } = await supabase
+    .from('separacao_arquivos')
+    .select('nome_arquivo, categoria')
+    .eq('separacao_id', s.id)
 
   const linha = (rot: string, val: unknown) =>
     `<tr><th>${esc(rot)}</th><td>${esc(val) || '—'}</td></tr>`
-
-  const itensHtml = (itens || []).length
-    ? `<h2>Peças (${itens!.length})</h2><table class="itens"><tr><th>Qtd</th><th>Descrição</th><th>Obs.</th></tr>${itens!
-        .map(
-          (i: any) =>
-            `<tr><td>${esc(i.quantidade)} ${esc(i.unidade || '')}</td><td>${esc(i.descricao)}</td><td>${esc(i.observacoes || '')}</td></tr>`,
-        )
-        .join('')}</table>`
-    : ''
 
   const arqs = (arquivos || []) as { nome_arquivo: string; categoria?: string }[]
   const arqHtml = arqs.length
@@ -181,7 +169,6 @@ ${linha('Anexos', arqs.length)}
 </table>
 ${s.observacoes_internas ? `<h2>Observação</h2><div class="obs">${esc(s.observacoes_internas)}</div>` : ''}
 ${garantia}${devolucao}
-${itensHtml}
 ${arqHtml ? `<h2>Arquivos anexados (${arqs.length})</h2>${arqHtml}` : ''}
 <script>window.onload=function(){window.print()}</script>
 </body></html>`
