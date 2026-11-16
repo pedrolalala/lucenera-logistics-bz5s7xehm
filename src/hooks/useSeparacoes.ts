@@ -26,6 +26,8 @@ export interface Separacao {
   numero_venda: string[]
   /** SPEC-231 D4: número da venda (VENDA-0003), buscado no orçamento de numero_venda. */
   venda_numero?: string | null
+  /** SPEC-311: outras vendas entregues junto (Venda Parcial), vírgula entre números. */
+  outras_vendas?: string | null
   solicitante: string | null
   separacoes_parciais: string[] | null
   nivel_complexidade: NivelComplexidade | null

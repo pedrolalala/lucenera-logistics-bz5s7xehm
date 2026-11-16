@@ -381,6 +381,13 @@ export function SeparacaoCard({
                     ).replace(/\b(VENDA|ORC)-(\d)/gi, '$2')}
                   </span>
                 </p>
+                {/* SPEC-311: outras vendas do cliente entregues junto */}
+                {separacao.outras_vendas && (
+                  <p>
+                    Também nesta entrega:{' '}
+                    <span className="font-medium">{separacao.outras_vendas}</span>
+                  </p>
+                )}
                 <p>
                   Entrega:{' '}
                   <span className="capitalize">
