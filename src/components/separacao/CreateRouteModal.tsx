@@ -15,9 +15,11 @@ import {
   Navigation2,
   ExternalLink,
   Hand,
+  FileText,
 } from 'lucide-react'
 import { Separacao } from '@/hooks/useSeparacoes'
 import { useToast } from '@/hooks/use-toast'
+import { imprimirRotaDoDia } from '@/lib/rota-do-dia-pdf'
 
 interface CreateRouteModalProps {
   isOpen: boolean
@@ -35,6 +37,8 @@ export function CreateRouteModal({
   const [ordered, setOrdered] = useState<Separacao[]>([])
   const [departureTime, setDepartureTime] = useState('08:00')
   const [timePerDelivery, setTimePerDelivery] = useState('30')
+  // SPEC-327: nome opcional do entregador, que sai no rodapé da folha da rota
+  const [entregador, setEntregador] = useState('')
   const { toast } = useToast()
 
   useEffect(() => {
@@ -51,6 +55,22 @@ export function CreateRouteModal({
     const header = `Rota de Entregas - ${format(date, 'dd/MM/yyyy')}\nSaída: ${departureTime}\n\n`
     navigator.clipboard.writeText(header + text)
     toast({ title: 'Lista copiada para a área de transferência!' })
+  }
+
+  // SPEC-327: folha "Rota do Dia" para o entregador, na ordem da rota
+  const handleGerarPdf = () => {
+    if (ordered.length === 0) {
+      toast({ title: 'Nenhuma entrega na rota', description: 'Não há entregas para gerar o PDF.', variant: 'destructive' })
+      return
+    }
+    const ok = imprimirRotaDoDia({ data: date, entregas: ordered, saida: departureTime, entregador })
+    if (!ok) {
+      toast({
+        title: 'Não foi possível abrir o PDF',
+        description: 'O navegador bloqueou a nova janela. Permita pop-ups para este site e tente de novo.',
+        variant: 'destructive',
+      })
+    }
   }
 
   const handleGoogleMaps = () => {
@@ -133,6 +153,18 @@ export function CreateRouteModal({
               </div>
             </div>
 
+            <div className="space-y-2">
+              <Label className="text-xs font-bold text-muted-foreground">
+                ENTREGADOR RESPONSÁVEL (OPCIONAL, SAI NO PDF)
+              </Label>
+              <Input
+                value={entregador}
+                onChange={(e) => setEntregador(e.target.value)}
+                placeholder="Nome de quem fará a entrega"
+                className="h-11 bg-card"
+              />
+            </div>
+
             <div className="flex flex-wrap items-center gap-3">
               <Button
                 onClick={handleOptimize}
@@ -200,6 +232,12 @@ export function CreateRouteModal({
             </Button>
             <Button variant="outline" onClick={handleCopyList} className="gap-2 bg-card h-10">
               <Copy className="w-4 h-4" /> Copiar Lista
+            </Button>
+            <Button
+              onClick={handleGerarPdf}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2 h-10"
+            >
+              <FileText className="w-4 h-4" /> Gerar PDF
             </Button>
           </div>
           <Button variant="ghost" onClick={onClose} className="h-10 w-full sm:w-auto">
